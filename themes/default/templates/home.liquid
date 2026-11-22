@@ -1,0 +1,39 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="wrap">
+  {% if pagination.page == 1 %}
+  <section class="hero">
+    <h1>{{ site.name }}</h1>
+    {% if site.tagline != "" %}<p class="tagline">{{ site.tagline }}</p>{% endif %}
+    {% if site.description != "" %}<p class="intro">{{ site.description }}</p>{% endif %}
+  </section>
+  {% endif %}
+
+  {% if featured.size > 0 %}
+  <section class="section">
+    <h2 class="section-title">{{ 'featured' | t }}</h2>
+    <div class="featured-grid">
+      {% for post in featured %}
+      <a class="featured-item" href="{{ post.url }}">
+        {% if post.cover != "" %}<img src="{{ post.cover }}" alt="" loading="lazy" decoding="async">{% endif %}
+        <strong>{{ post.title }}</strong>
+        <span class="meta">{{ post.date | date_fmt: 'medium' }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="section">
+    <h2 class="section-title">{{ 'latest' | t }}</h2>
+    {% if posts.size == 0 %}
+      {% render 'partials/empty' %}
+    {% else %}
+      <div class="post-list">
+        {% for post in posts %}{% render 'partials/post-card', post: post %}{% endfor %}
+      </div>
+      {% render 'partials/pagination', pagination: pagination %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

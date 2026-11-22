@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="{{ site.locale }}" data-mode="{{ site.appearance }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title }}</title>
+  {% if page.description and page.description != "" %}<meta name="description" content="{{ page.description }}">{% endif %}
+  {% if page.noindex %}<meta name="robots" content="noindex">{% endif %}
+  {% if page.canonical and page.canonical != "" %}<link rel="canonical" href="{{ page.canonical }}">{% endif %}
+  <meta property="og:site_name" content="{{ site.name }}">
+  <meta property="og:title" content="{{ page.title }}">
+  <meta property="og:type" content="{% if page.type == 'post' %}article{% else %}website{% endif %}">
+  {% if page.description and page.description != "" %}<meta property="og:description" content="{{ page.description }}">{% endif %}
+  {% if page.image and page.image != "" %}<meta property="og:image" content="{{ site.url }}{{ page.image }}">{% endif %}
+  <meta name="color-scheme" content="{% if site.appearance == 'auto' %}light dark{% else %}{{ site.appearance }}{% endif %}">
+  <link rel="stylesheet" href="{{ 'style.css' | asset_url }}">
+</head>
+<body class="page-{{ page.type }}">
+  <a class="skip-link" href="#main">{{ 'skip_to_content' | t }}</a>
+  <div class="progress" aria-hidden="true"><span></span></div>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/">{{ site.name }}</a>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="/"{% if page.type == 'home' %} aria-current="page"{% endif %}>{{ 'nav_home' | t }}</a>
+        <a href="/posts"{% if page.type == 'list' or page.type == 'post' %} aria-current="page"{% endif %}>{{ 'nav_posts' | t }}</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>© {{ site.year }} {{ site.name }}{% if site.footer_text and site.footer_text != "" %} · {{ site.footer_text }}{% endif %}</p>
+      {% if site.icp and site.icp != "" %}<p><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ site.icp }}</a></p>{% endif %}
+    </div>
+  </footer>
+
+  <button class="to-top" type="button" aria-label="{{ 'back_to_top' | t }}" hidden>↑</button>
+  <script src="{{ 'main.js' | asset_url }}" defer></script>
+</body>
+</html>

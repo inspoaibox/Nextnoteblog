@@ -1,0 +1,11 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="wrap">
+  <div class="empty">
+    <p class="empty-code">404</p>
+    <h1>{{ 'not_found_title' | t }}</h1>
+    <p>{{ 'not_found_hint' | t }}</p>
+    <p><a class="btn" href="/">{{ 'back_home' | t }}</a></p>
+  </div>
+</div>
+{% endblock %}

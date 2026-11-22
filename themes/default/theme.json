@@ -1,0 +1,8 @@
+{
+  "id": "default",
+  "name": "极简阅读",
+  "version": "1.0.0",
+  "author": "nexemcblog",
+  "description": "以正文阅读为中心的极简主题：窄栏排版、自动目录、亮暗自适应。",
+  "requires": ">=0.1.0"
+}

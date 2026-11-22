@@ -1,0 +1,17 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="wrap">
+  <header class="list-header">
+    <h1>{{ 'all_posts' | t }}</h1>
+    <p class="meta">{{ pagination.total | num }}</p>
+  </header>
+  {% if posts.size == 0 %}
+    {% render 'partials/empty' %}
+  {% else %}
+    <div class="post-list">
+      {% for post in posts %}{% render 'partials/post-card', post: post %}{% endfor %}
+    </div>
+    {% render 'partials/pagination', pagination: pagination %}
+  {% endif %}
+</div>
+{% endblock %}

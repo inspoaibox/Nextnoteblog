@@ -1,0 +1,16 @@
+{
+  "name": "nexemcblog",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm --filter @nexemc/admin build && pnpm --filter @nexemc/server build",
+    "start": "node apps/server/dist/server.js",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["sharp", "esbuild"]
+  }
+}
