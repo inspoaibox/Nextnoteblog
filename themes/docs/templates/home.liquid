@@ -1,12 +1,15 @@
 {% layout 'layout' %}
 {% block content %}
 <div class="frame">
+  {% comment %} 站名已经在页头显示，这里只给读屏软件和搜索引擎一个页面标题，不重复显示 {% endcomment %}
+  <h1 class="sr-only">{{ site.name }}</h1>
   {% if pagination.page == 1 %}
-  <header class="list-header">
-    <h1>{{ site.name }}</h1>
+  {% if site.tagline != "" or site.description != "" %}
+  <header class="list-header doc-intro">
     {% if site.tagline != "" %}<p class="list-intro">{{ site.tagline }}</p>{% endif %}
     {% if site.description != "" %}<p>{{ site.description }}</p>{% endif %}
   </header>
+  {% endif %}
 
   {% if categories.size > 0 %}
   <section class="doc-sections" aria-label="{{ 'categories' | t }}">

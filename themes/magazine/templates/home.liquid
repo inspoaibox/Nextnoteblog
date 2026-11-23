@@ -1,6 +1,8 @@
 {% layout 'layout' %}
 {% block content %}
 <div class="frame">
+  {% comment %} 站名已经在页头显示，这里只给读屏软件和搜索引擎一个页面标题，不重复显示 {% endcomment %}
+  <h1 class="sr-only">{{ site.name }}</h1>
   {% if posts.size == 0 %}
     {% render 'partials/empty' %}
   {% else %}

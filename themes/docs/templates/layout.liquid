@@ -78,11 +78,10 @@
       </main>
       <footer class="site-footer">
         <div class="frame">
-      {% if nav.footer.size > 0 %}
       <nav class="footer-nav" aria-label="{{ 'footer_nav' | t }}">
         {% for item in nav.footer %}<a href="{{ item.url }}"{% if item.new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.label }}</a>{% endfor %}
+        <a href="{{ site.feed_url }}">{{ 'subscribe' | t }}</a>
       </nav>
-      {% endif %}
       <p>© {{ site.year }} {{ site.name }}</p>
       {% if site.footer_text and site.footer_text != "" %}<p>{{ site.footer_text }}</p>{% endif %}
       {% if site.icp and site.icp != "" %}<p><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ site.icp }}</a></p>{% endif %}

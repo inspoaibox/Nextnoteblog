@@ -58,5 +58,6 @@
   "footnotes": "脚注",
   "footnote_back": "返回正文",
   "copy_code": "复制",
-  "unsupported_block": "不支持的容器语法"
+  "unsupported_block": "不支持的容器语法",
+  "subscribe": "订阅（RSS）"
 }

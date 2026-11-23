@@ -1,13 +1,14 @@
 {% layout 'layout' %}
 {% block content %}
 <div class="frame">
-  {% if pagination.page == 1 %}
+  {% comment %} 站名已经在页头显示，这里只给读屏软件和搜索引擎一个页面标题，不重复显示 {% endcomment %}
+  <h1 class="sr-only">{{ site.name }}</h1>
+  {% if pagination.page == 1 %}{% if site.tagline != "" or site.description != "" %}
   <section class="masthead">
-    <h1 class="masthead-name hash" data-hash="#">{{ site.name }}</h1>
     {% if site.tagline != "" %}<p class="masthead-tagline">{{ site.tagline }}</p>{% endif %}
     {% if site.description != "" %}<p class="masthead-intro">{{ site.description }}</p>{% endif %}
   </section>
-  {% endif %}
+  {% endif %}{% endif %}
 
   {% if posts.size == 0 %}
     {% render 'partials/empty' %}

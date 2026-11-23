@@ -49,6 +49,8 @@ pnpm --filter @nexemc/server exec tsx src/server.ts --port=3200 --data-dir=../..
 pnpm --filter @nexemc/server exec tsx scripts/seed-demo.ts http://localhost:3200
 ```
 
+内置主题的样式由“公共基础 + 各主题专属样式”合成：改了 `themes/default/assets/style.css`（公共基础）或 `themes/_src/*.css`（各主题专属）之后，运行 `node scripts/build-themes.mjs` 重新生成。
+
 修改 `apps/server/src/db/schema.ts` 后执行 `pnpm --filter @nexemc/server db:generate` 生成迁移文件；服务启动时会自动执行迁移。
 
 ## Linux 部署

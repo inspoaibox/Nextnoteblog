@@ -107,10 +107,23 @@ test('切换内置主题：全站统一生效，内容与地址不变；可一�
 });
 
 test('视觉主题：孔版印刷、极光、拼贴都能启用，明暗固定，配置项生效，文章内容不变', async () => {
+  // 首页不再重复显示站名：页头一个，正文里只有给读屏软件的隐藏标题
+  for (const id of BUILTIN) {
+    await api('POST', `/themes/${id}/activate`);
+    const home = (await page('/')).body;
+    assert.match(home, /<h1 class="sr-only">主题测试<\/h1>/, `${id} 有隐藏的页面标题`);
+    assert.equal((home.match(/<h1[ >]/g) || []).length, 1, `${id} 首页只有一个 h1`);
+    assert.doesNotMatch(home, /class="(masthead|rmast|ahero|zmast)"/, `${id} 没填标语和介绍时不显示标语区`);
+  }
+  await api('PUT', '/settings', { tagline: '一句标语' });
+  await api('POST', '/themes/riso/activate');
+  assert.match((await page('/')).body, /class="rmast-tagline">一句标语</, '填了标语才显示');
+  await api('PUT', '/settings', { tagline: '' });
+
   // 管理员把外观设成深色：始终浅色的主题不能被带成深色
   await api('PUT', '/settings', { appearance: 'dark' });
   const cases: [string, RegExp, string][] = [
-    ['riso', /class="rmast"/, 'light'],
+    ['riso', /class="site-header rhead"/, 'light'],
     ['aurora', /class="sky"/, 'dark'],
     ['zine', /class="ticker"/, 'light'],
   ];
