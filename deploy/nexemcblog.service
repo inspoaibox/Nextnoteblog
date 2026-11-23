@@ -1,0 +1,35 @@
+[Unit]
+Description=nexemcblog Markdown blog
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nexemcblog
+Group=nexemcblog
+WorkingDirectory=/opt/nexemcblog
+Environment=NODE_ENV=production
+Environment=APP_ROOT=/opt/nexemcblog
+Environment=DATA_DIR=/var/lib/nexemcblog
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+Environment=NODE_OPTIONS=--disable-warning=ExperimentalWarning
+ExecStart=/usr/bin/node /opt/nexemcblog/apps/server/dist/server.js
+# 恢复备份后进程会主动退出，由 systemd 拉起时完成数据替换，所以必须总是重启
+Restart=always
+RestartSec=2
+
+# 安全加固：只能写自己的数据目录
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nexemcblog
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -285,6 +285,9 @@ export function Posts({ onNew }: { onNew: () => void }) {
                         <button className="link-btn" onClick={() => void duplicate(p)}>
                           复制
                         </button>
+                        <a href={`/admin/api/export/posts/${p.id}`} download>
+                          导出
+                        </a>
                         {p.status === 'published' && (
                           <button className="link-btn" onClick={() => void unpublish(p)}>
                             下线

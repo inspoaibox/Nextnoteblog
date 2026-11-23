@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "tsx --test src/app.test.ts src/app-m2.test.ts src/app-m3.test.ts src/app-m4.test.ts src/lib/slug.test.ts",
+    "test": "tsx --test src/app.test.ts src/app-m2.test.ts src/app-m3.test.ts src/app-m4.test.ts src/app-m5.test.ts src/lib/slug.test.ts",
     "db:generate": "drizzle-kit generate"
   },
   "devDependencies": {
@@ -29,6 +29,7 @@
     "liquidjs": "^10.30.1",
     "pinyin-pro": "^3.29.5",
     "sharp": "^0.35.5",
+    "yaml": "^2.9.1",
     "zod": "^4.6.7"
   }
 }

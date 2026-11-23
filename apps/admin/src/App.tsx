@@ -16,6 +16,7 @@ import { Pages, PageEditor } from './pages/Pages';
 import { Nav } from './pages/Nav';
 import { Languages } from './pages/Languages';
 import { Themes } from './pages/Themes';
+import { Tools } from './pages/Tools';
 
 export interface Language {
   code: string;
@@ -157,6 +158,7 @@ function Shell() {
           <NavLink to="/themes">主题</NavLink>
           <NavLink to="/nav">导航</NavLink>
           <NavLink to="/languages">多语言</NavLink>
+          <NavLink to="/tools">工具</NavLink>
           <NavLink to="/settings">设置</NavLink>
         </nav>
         <div className="sidebar-foot">
@@ -184,6 +186,7 @@ function Shell() {
           <Route path="/nav" element={<Nav />} />
           <Route path="/languages" element={<Languages />} />
           <Route path="/themes" element={<Themes />} />
+          <Route path="/tools" element={<Tools />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/setup" element={<Navigate to="/" replace />} />
           <Route path="*" element={<div className="empty">页面不存在</div>} />

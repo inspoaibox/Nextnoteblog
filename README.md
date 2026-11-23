@@ -8,7 +8,7 @@
 - **M2 组织与前台**（已完成）：多级分类树、标签、专题与系列、自定义页面、导航菜单、站内搜索（中文分词）、归档、面包屑，以及文章批量操作。
 - **M3 多语言**（已完成）：语言管理、各语言独立的文章 / 分类 / 标签 / 专题 / 页面 / 导航、语言切换与 hreflang、界面文案翻译、多语言订阅与站点地图。默认语言的地址不带前缀，其他语言带前缀（如 `/en/…`）。
 - **M4 主题系统**（已完成）：三套内置主题（极简阅读、技术文档、杂志卡片），后台切换与回退、管理员预览、主题配置、ZIP 导入校验、版本升级与回滚、信任分级。自己做主题见 [docs/theme-development.md](docs/theme-development.md)。
-- 待做：M5 导入导出与备份。
+- **M5 导入导出与运维**（已完成）：Markdown 导入（Front Matter、冲突检测、相对路径图片）、单篇 / 分类 / 全站导出、备份与恢复（每日自动备份）、重定向管理、操作日志、结构化数据，以及 systemd 部署方式。
 
 ## 目录结构
 
@@ -18,7 +18,7 @@ apps/admin         管理后台（React + CodeMirror 6）
 packages/markdown  Markdown 渲染管线，服务端与后台预览共用
 themes/            内置主题：default 极简阅读、docs 技术文档、magazine 杂志卡片
 examples/          示例主题（做自己主题的起点）
-docs/              主题开发说明
+docs/              主题开发说明、部署与运维说明
 deploy/            Caddy 配置
 data/              运行时数据（数据库、上传文件），不进版本库
 ```
@@ -51,7 +51,9 @@ pnpm --filter @nexemc/server exec tsx scripts/seed-demo.ts http://localhost:3200
 
 修改 `apps/server/src/db/schema.ts` 后执行 `pnpm --filter @nexemc/server db:generate` 生成迁移文件；服务启动时会自动执行迁移。
 
-## Linux 部署（Docker Compose）
+## Linux 部署
+
+Docker Compose（推荐）：
 
 ```bash
 cp .env.example .env            # 把 DOMAIN 改成已解析到本机的域名
@@ -59,10 +61,9 @@ mkdir -p data && sudo chown -R 1000:1000 data
 docker compose up -d --build
 ```
 
-首次访问站点会进入安装向导。Caddy 自动申请并续期 HTTPS 证书。
+不用 Docker 时：`sudo bash deploy/install.sh`，以 systemd 服务运行，再用 Caddy 或 Nginx 反向代理。
 
-- **备份 / 迁移**：所有数据都在 `./data`，拷贝该目录即可。
-- **升级**：`git pull && docker compose up -d --build`，数据库迁移在启动时自动执行。
+首次访问站点会进入安装向导。所有数据都在数据目录里，备份、迁移只需要它。两种方式的详细步骤、升级、备份恢复、迁移见 [docs/deployment.md](docs/deployment.md)。
 
 ## 环境变量
 
@@ -72,12 +73,17 @@ docker compose up -d --build
 | `HOST` | `0.0.0.0` | 监听地址 |
 | `DATA_DIR` | `./data` | 数据目录 |
 | `NODE_ENV` | — | 设为 `production` 时启用模板与静态资源缓存 |
+| `AUTO_BACKUP` | 开启 | 设为 `0` 关闭每日自动备份 |
 
 ## 运维命令
 
-后台无法登录时，可在服务器上重置密码：
+后台无法登录时，可在服务器上操作（Docker 方式在前面加 `docker compose exec blog`）：
 
 ```bash
-docker compose exec blog node apps/server/dist/cli.js reset-password <用户名> <新密码>
-docker compose exec blog node apps/server/dist/cli.js list-users
+node apps/server/dist/cli.js reset-password <用户名> <新密码>
+node apps/server/dist/cli.js list-users
+node apps/server/dist/cli.js backup [备注]
+node apps/server/dist/cli.js list-backups
+node apps/server/dist/cli.js restore <备份文件名>     # 之后重启服务
+node apps/server/dist/cli.js theme-check <主题包.zip>
 ```

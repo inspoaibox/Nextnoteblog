@@ -12,6 +12,9 @@
   <meta property="og:type" content="{% if page.type == 'post' %}article{% else %}website{% endif %}">
   {% if page.description and page.description != "" %}<meta property="og:description" content="{{ page.description }}">{% endif %}
   {% if page.image and page.image != "" %}<meta property="og:image" content="{{ site.url }}{{ page.image }}">{% endif %}
+  {% if page.canonical and page.canonical != "" %}<meta property="og:url" content="{{ page.canonical }}">{% endif %}
+  <meta name="twitter:card" content="{% if page.image and page.image != "" %}summary_large_image{% else %}summary{% endif %}">
+  {% if page.jsonld and page.jsonld != "" %}<script type="application/ld+json">{{ page.jsonld | raw }}</script>{% endif %}
   <meta name="color-scheme" content="{% if site.appearance == 'auto' %}light dark{% else %}{{ site.appearance }}{% endif %}">
   {% for alt in hreflang %}<link rel="alternate" hreflang="{{ alt.code }}" href="{{ alt.href }}">
   {% endfor %}<link rel="alternate" type="application/atom+xml" title="{{ site.name }}" href="{{ site.feed_url }}">

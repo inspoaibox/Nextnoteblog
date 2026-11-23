@@ -80,8 +80,8 @@ function BaseSettings() {
     e.preventDefault();
     setSaving(true);
     try {
-      const { siteName, tagline, description, siteUrl, timezone, appearance, icp, footerText } = form;
-      setForm(await api('PUT', '/settings', { siteName, tagline, description, siteUrl: siteUrl.replace(/\/+$/, ''), timezone, appearance, icp, footerText, postsPerPage: Number(form.postsPerPage) }));
+      const { siteName, tagline, description, siteUrl, timezone, appearance, icp, footerText, siteNoindex } = form;
+      setForm(await api('PUT', '/settings', { siteName, tagline, description, siteUrl: siteUrl.replace(/\/+$/, ''), timezone, appearance, icp, footerText, siteNoindex: !!siteNoindex, postsPerPage: Number(form.postsPerPage) }));
       await reload();
       toast('设置已保存');
     } catch (err) {
@@ -138,6 +138,12 @@ function BaseSettings() {
         <Field label="时区" hint="例如 Asia/Shanghai，用于前台日期显示">
           <input value={form.timezone} onChange={set('timezone')} required />
         </Field>
+
+        <h2>搜索引擎</h2>
+        <label className="check">
+          <input type="checkbox" checked={!!form.siteNoindex} onChange={(e) => setForm({ ...form, siteNoindex: e.target.checked })} /> 不让搜索引擎收录整个站点
+        </label>
+        <p className="muted small" style={{ marginTop: -4 }}>建站初期内容还没准备好、或者是内部站点时使用。开启后 robots.txt 会禁止抓取，所有页面带上 noindex。</p>
 
         <h2>页脚</h2>
         <Field label="页脚说明">

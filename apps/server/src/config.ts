@@ -20,5 +20,8 @@ export const config = {
   host: process.env.HOST || '0.0.0.0',
   isProd: process.env.NODE_ENV === 'production',
   sessionDays: 30,
+  // 恢复备份后需要重启进程来替换数据库文件；测试里关掉自动退出
+  exitOnRestore: process.env.NB_NO_EXIT !== '1',
+  autoBackup: process.env.AUTO_BACKUP !== '0',
   maxUploadBytes: 10 * 1024 * 1024,
 };

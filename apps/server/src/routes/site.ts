@@ -97,6 +97,8 @@ function withPrefix<T>(value: T, prefix: string): T {
   return out as T;
 }
 const join = (prefix: string, path: string) => (path === '/' ? prefix || '/' : prefix + path);
+/** 输出到 <script type="application/ld+json"> 里的 JSON：转义 < 防止提前闭合标签 */
+const jsonLd = (data: unknown) => JSON.stringify(data).replace(/</g, '\\u003c');
 const xml = (s: string) => s.replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c]!);
 
 /** 供全局 404 处理使用（查重定向表，再渲染主题的 404 页） */
@@ -167,6 +169,7 @@ export async function siteRoutes(app: FastifyInstance) {
       categories: withPrefix((await tax.getTree(sc.locale)).roots.filter((c) => c.visible).map(catView), sc.prefix),
     };
     const page = rest.page as Record<string, unknown> | undefined;
+    if (page && s.siteNoindex) page.noindex = true;
     // 只有真正存在对应译文的语言才输出 hreflang
     const hreflang = page?.noindex ? [] : languages.filter((l) => l.available).map((l) => ({ code: l.code, href: `${s.siteUrl}${l.current ? join(sc.prefix, path) : l.href}` }));
     const context = { site, nav: withPrefix(nav, sc.prefix), query: '', languages, hreflang, _ui: sc.ui, ...withPrefix(rest, sc.prefix) };
@@ -392,7 +395,14 @@ export async function siteRoutes(app: FastifyInstance) {
 
   /* ---------- 搜索（不缓存，不让搜索引擎收录结果页） ---------- */
 
+  // 搜索是唯一每次都要查库的公开页面：按 IP 做简单限速，防止被刷
+  const searchHits = new Map<string, { n: number; reset: number }>();
   app.get('/search', async (req, reply) => {
+    const now = Date.now();
+    const hit = searchHits.get(req.ip);
+    if (!hit || hit.reset < now) searchHits.set(req.ip, { n: 1, reset: now + 60_000 });
+    else if (++hit.n > 40) return reply.code(429).header('retry-after', '60').type('text/plain; charset=utf-8').send('搜索过于频繁，请稍后再试。');
+    if (searchHits.size > 5000) searchHits.clear();
     const sc = await scopeOf(req);
     const q = String((req.query as { q?: string }).q ?? '').trim().slice(0, 100);
     const page = pageOf(req);
@@ -439,6 +449,27 @@ export async function siteRoutes(app: FastifyInstance) {
     const link = (n: { slug: string; title: string } | null) => (n ? { title: n.title, url: postsSvc.postPath(n.slug) } : null);
     return {
       page: {
+        // 结构化数据：文章信息与面包屑，供搜索引擎生成富结果
+        jsonld: preview
+          ? ''
+          : jsonLd([
+              {
+                '@context': 'https://schema.org',
+                '@type': 'BlogPosting',
+                headline: row.title,
+                description: meta.seoDescription || card.excerpt,
+                inLanguage: locale,
+                datePublished: row.firstPublishedAt ? new Date(row.firstPublishedAt).toISOString() : undefined,
+                dateModified: new Date(row.contentUpdatedAt ?? row.firstPublishedAt ?? Date.now()).toISOString(),
+                author: row.author ? { '@type': 'Person', name: row.author } : undefined,
+                image: row.cover ? `${s.siteUrl}${row.cover}` : undefined,
+                mainEntityOfPage: canonical(sc, card.url) || undefined,
+                publisher: { '@type': 'Organization', name: s.siteName },
+              },
+              ...(primary && primary.visible && s.siteUrl
+                ? [{ '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: primary.trail.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: `${s.siteUrl}${join(sc.prefix, c.url)}` })) }]
+                : []),
+            ]),
         title: `${meta.seoTitle || row.title} - ${s.siteName}`,
         description: meta.seoDescription || card.excerpt,
         type: 'post',
@@ -587,6 +618,7 @@ export async function siteRoutes(app: FastifyInstance) {
 
   app.get('/robots.txt', async (req, reply) => {
     const s = await getSettings();
+    if (s.siteNoindex) return reply.type('text/plain; charset=utf-8').send('User-agent: *\nDisallow: /\n');
     return reply.type('text/plain; charset=utf-8').send(`User-agent: *\nDisallow: /admin/\nDisallow: /preview/\nDisallow: /search\n\nSitemap: ${origin(req, s)}/sitemap.xml\n`);
   });
 

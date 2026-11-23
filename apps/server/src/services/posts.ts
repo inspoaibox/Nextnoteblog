@@ -319,6 +319,14 @@ export async function rollback(tid: number, userId: number) {
   });
 }
 
+/** 导入旧文章时沿用原来的发布日期与更新日期 */
+export async function setPublishDates(tid: number, dates: { firstPublishedAt?: number | null; contentUpdatedAt?: number | null }) {
+  const set: Partial<typeof pt.$inferInsert> = {};
+  if (dates.firstPublishedAt) set.firstPublishedAt = dates.firstPublishedAt;
+  if (dates.contentUpdatedAt) set.contentUpdatedAt = dates.contentUpdatedAt;
+  if (Object.keys(set).length) await db.update(pt).set(set).where(eq(pt.id, tid));
+}
+
 /* ---------- 回收站 ---------- */
 
 export async function trash(tid: number) {

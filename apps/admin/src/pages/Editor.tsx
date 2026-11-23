@@ -653,6 +653,18 @@ export function Editor() {
               <input type="checkbox" checked={fields.meta.noindex === true} onChange={(e) => changeMeta({ noindex: e.target.checked })} /> 不让搜索引擎收录
             </label>
 
+            <h3>导出</h3>
+            <div className="row wrap">
+              <a className="btn" href={`/admin/api/export/posts/${id}`} download onClick={() => void save('auto')}>
+                下载 .md（当前草稿）
+              </a>
+              {t.publishedRevisionId && (
+                <a className="btn" href={`/admin/api/export/posts/${id}?source=published`} download>
+                  下载线上版本
+                </a>
+              )}
+            </div>
+
             {t.publishedRevisionId && (
               <>
                 <h3>发布</h3>

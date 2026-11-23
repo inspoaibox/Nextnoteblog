@@ -5,7 +5,11 @@ import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { migrate } from 'drizzle-orm/sqlite-proxy/migrator';
 import { config } from '../config.ts';
 import * as schema from './schema.ts';
+import { applyPendingRestore } from '../lib/restore.ts';
 
+fs.mkdirSync(config.dataDir, { recursive: true });
+/** 本次启动是否刚完成了一次备份恢复（值是被替换下来的旧数据所在目录） */
+export const restoredFrom = applyPendingRestore(config.dataDir);
 fs.mkdirSync(config.uploadsDir, { recursive: true });
 
 export const sqlite = new DatabaseSync(config.dbFile);

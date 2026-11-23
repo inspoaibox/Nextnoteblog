@@ -14,6 +14,7 @@ import { loadTheme } from '../theme/engine.ts';
 import { adminOrgRoutes } from './admin-org.ts';
 import { adminI18nRoutes } from './admin-i18n.ts';
 import { adminThemeRoutes } from './admin-themes.ts';
+import { adminToolRoutes } from './admin-tools.ts';
 import { liveTheme } from '../services/themes.ts';
 import * as i18n from '../services/i18n.ts';
 import * as searchSvc from '../services/search.ts';
@@ -326,6 +327,7 @@ export async function adminRoutes(app: FastifyInstance) {
           icp: z.string().max(100),
           footerText: z.string().max(500),
           langFallback: z.enum(['home', 'hide']),
+          siteNoindex: z.boolean(),
         })
         .partial(),
       req.body,
@@ -345,6 +347,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(adminOrgRoutes);
   await app.register(adminI18nRoutes);
   await app.register(adminThemeRoutes);
+  await app.register(adminToolRoutes);
 }
 
 declare module 'fastify' {

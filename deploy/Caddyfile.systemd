@@ -1,0 +1,9 @@
+# systemd 方式部署时的 Caddy 配置：把 blog.example.com 换成你的域名，
+# 放到 /etc/caddy/Caddyfile 后执行 systemctl reload caddy。证书会自动申请和续期。
+blog.example.com {
+	encode zstd gzip
+	request_body {
+		max_size 64MB
+	}
+	reverse_proxy 127.0.0.1:3000
+}

@@ -19,6 +19,8 @@ export interface SiteSettings {
   footerText: string;
   /** 当前内容没有某语言的译文时，语言切换器里该语言的处理：指向该语言首页，或直接不显示 */
   langFallback: 'home' | 'hide';
+  /** 让搜索引擎不要收录整个站点（建站初期、内部站点用） */
+  siteNoindex: boolean;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -35,6 +37,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   icp: '',
   footerText: '',
   langFallback: 'home',
+  siteNoindex: false,
 };
 
 let cache: SiteSettings | null = null;

@@ -16,6 +16,8 @@ import { invalidateTaxonomy } from './services/taxonomy.ts';
 import { indexedCount, rebuildIndex } from './services/search.ts';
 import { listLanguages, splitLocale } from './services/i18n.ts';
 import { initThemes } from './services/themes.ts';
+import { autoBackupIfDue } from './services/backup.ts';
+import { restoredFrom } from './db/index.ts';
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   await runMigrations();
@@ -44,6 +46,14 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   app.addHook('onSend', async (_req, reply) => {
     reply.header('x-content-type-options', 'nosniff');
     reply.header('referrer-policy', 'strict-origin-when-cross-origin');
+    reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
+    // 后台不允许被任何页面嵌入，防止点击劫持；也不让搜索引擎收录
+    if (_req.url.startsWith('/admin')) {
+      reply.header('x-frame-options', 'DENY');
+      reply.header('x-robots-tag', 'noindex, nofollow');
+      if (!_req.url.startsWith('/admin/api')) reply.header('content-security-policy', "default-src 'self'; img-src * data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; frame-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    }
+    if (_req.protocol === 'https') reply.header('strict-transport-security', 'max-age=31536000');
   });
 
   app.setErrorHandler((err: any, req, reply) => {
@@ -113,9 +123,19 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
   // 搜索索引是派生数据：为空时（首次升级、被清空）自动重建
   if (indexedCount() === 0) await rebuildIndex();
 
+  if (restoredFrom) app.log.warn(`已从备份恢复数据，原有数据保留在 ${restoredFrom}`);
+
+  // 每天自动备份：启动一分钟后检查一次，之后每 6 小时检查是否到期
+  const backupTimers: NodeJS.Timeout[] = [];
+  if (config.autoBackup) {
+    const tick = () => autoBackupIfDue().then((name) => name && app.log.info(`已完成自动备份：${name}`)).catch((err) => app.log.error(err, '自动备份失败'));
+    backupTimers.push(setTimeout(tick, 60_000).unref(), setInterval(tick, 6 * 3600_000).unref());
+  }
+
   const viewTimer = setInterval(() => flushViews().catch((err) => app.log.error(err)), 15_000);
   app.addHook('onClose', async () => {
     clearInterval(viewTimer);
+    backupTimers.forEach((t) => clearTimeout(t));
     await flushViews();
   });
 

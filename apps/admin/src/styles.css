@@ -299,3 +299,13 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); outline
 .table.kv th { width: 7em; color: var(--muted); font-weight: 500; font-size: 13px; }
 .check-ok { color: var(--ok); font-weight: 500; }
 .modal-body h3:first-child { margin-top: 0; }
+
+/* ====================== M5：工具 ====================== */
+.dropzone-big { border-style: dashed; border-width: 2px; }
+.import-opts { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.import-opts .field select { width: 100%; max-width: 480px; }
+.warn-text { color: #9a6400; }
+.table tr.is-warn td { background: #fdf6ec; }
+.log-detail { max-width: 360px; overflow-wrap: anywhere; }
+.backup-time { min-width: 11em; white-space: nowrap; }
+.backup-time .muted { white-space: normal; }
