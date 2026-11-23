@@ -1,0 +1,27 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="frame">
+  <header class="list-header">
+    <p class="kind">{% if collection.is_series %}{{ 'series' | t }}{% else %}{{ 'topic' | t }}{% endif %}</p>
+    <h1 class="hash" data-hash="#">{{ collection.title }}</h1>
+    {% if collection.description != "" %}<p class="list-intro">{{ collection.description }}</p>{% endif %}
+    <p>{{ 'post_count' | t | replace: '{n}', posts.size }}</p>
+  </header>
+  {% if collection.cover != "" %}<img class="collection-cover" src="{{ collection.cover }}" alt="">{% endif %}
+  {% if posts.size == 0 %}
+    {% render 'partials/empty' %}
+  {% elsif collection.is_series %}
+    <ol class="chapters">
+      {% for post in posts %}
+      <li>
+        <h2 class="row-title"><a href="{{ post.url }}">{{ post.title }}</a></h2>
+        {% if post.excerpt != "" %}<p class="row-excerpt">{{ post.excerpt }}</p>{% endif %}
+        <p class="row-meta">{{ post.reading_minutes }} {{ 'minutes' | t }}</p>
+      </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    {% render 'partials/post-index', posts: posts, skip_id: 0 %}
+  {% endif %}
+</div>
+{% endblock %}

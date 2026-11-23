@@ -1,0 +1,51 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="frame">
+  {% if posts.size == 0 %}
+    {% render 'partials/empty' %}
+  {% else %}
+    {% assign lead = nil %}
+    {% if pagination.page == 1 %}
+      {% comment %} 头条取最新的一篇非置顶文章 {% endcomment %}
+      {% for p in posts %}{% unless p.pinned %}{% assign lead = p %}{% break %}{% endunless %}{% endfor %}
+    {% endif %}
+    {% if lead %}
+      <article class="mlead">
+        <a class="mlead-cover" href="{{ lead.url }}" tabindex="-1" aria-hidden="true">{% if lead.cover != "" %}<img src="{{ lead.cover }}" alt="" decoding="async">{% else %}<span>{{ lead.title | slice: 0, 1 }}</span>{% endif %}</a>
+        <div class="mlead-body">
+          <p class="mcard-meta"><time datetime="{{ lead.date | date_iso }}">{{ lead.date | date_fmt }}</time>{% if lead.pinned %}<mark>{{ 'pinned' | t }}</mark>{% endif %}</p>
+          <h2 class="mlead-title"><a href="{{ lead.url }}">{{ lead.title }}</a></h2>
+          {% if lead.excerpt != "" %}<p class="mlead-excerpt">{{ lead.excerpt }}</p>{% endif %}
+          <p class="mcard-foot">{{ lead.reading_minutes }} {{ 'minutes' | t }}</p>
+        </div>
+      </article>
+    {% endif %}
+
+    {% if lead %}{% render 'partials/post-index', posts: posts, skip_id: lead.id %}{% else %}{% render 'partials/post-index', posts: posts, skip_id: 0 %}{% endif %}
+    {% render 'partials/pagination', pagination: pagination %}
+  {% endif %}
+
+  {% if pagination.page == 1 %}
+  {% if categories.size > 0 or tags.size > 0 %}
+  <section class="browse">
+    {% if categories.size > 0 %}
+    <div>
+      <h2>{{ 'categories' | t }}</h2>
+      <ul class="tag-cloud">
+        {% for cat in categories %}<li><a href="{{ cat.url }}">{{ cat.name }}</a><span>{{ cat.count }}</span></li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if tags.size > 0 %}
+    <div>
+      <h2>{{ 'tags' | t }}</h2>
+      <ul class="tag-cloud">
+        {% for tag in tags %}<li><a href="{{ tag.url }}">{{ tag.name }}</a><span>{{ tag.count }}</span></li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

@@ -13,6 +13,8 @@ export interface SiteSettings {
   /** 亮暗策略由管理员统一决定，访客不能切换 */
   appearance: 'light' | 'dark' | 'auto';
   activeTheme: string;
+  /** 上一个启用的主题，用于一键回退 */
+  previousTheme: string;
   icp: string;
   footerText: string;
   /** 当前内容没有某语言的译文时，语言切换器里该语言的处理：指向该语言首页，或直接不显示 */
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   postsPerPage: 10,
   appearance: 'auto',
   activeTheme: 'default',
+  previousTheme: '',
   icp: '',
   footerText: '',
   langFallback: 'home',

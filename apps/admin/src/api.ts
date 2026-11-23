@@ -73,6 +73,19 @@ export async function uploadImage(file: File, name = ''): Promise<MediaItem> {
   return handle(res);
 }
 
+/** 上传单个文件到指定接口（主题安装包等） */
+export async function uploadFile<T = any>(url: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append('file', file, file.name);
+  let res: Response;
+  try {
+    res = await fetch(BASE + url, { method: 'POST', credentials: 'same-origin', headers: { 'x-nb-csrf': '1' }, body: form });
+  } catch {
+    throw new ApiError(0, '网络连接失败，上传未完成');
+  }
+  return handle(res);
+}
+
 export const fmtTime = (ms: number | null | undefined) => (ms ? new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(ms) : '—');
 export const fmtSize = (bytes: number) => (bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`);
 

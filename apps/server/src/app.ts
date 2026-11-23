@@ -15,11 +15,13 @@ import { themeAssetsDir } from './theme/engine.ts';
 import { invalidateTaxonomy } from './services/taxonomy.ts';
 import { indexedCount, rebuildIndex } from './services/search.ts';
 import { listLanguages, splitLocale } from './services/i18n.ts';
+import { initThemes } from './services/themes.ts';
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   await runMigrations();
 
   await listLanguages(); // 预热语言表，地址改写是同步的
+  await initThemes();
 
   const app = Fastify({
     // /en/posts/x → /posts/x，并记下语言；这样所有前台路由天然支持每一种语言
@@ -68,8 +70,8 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
 
   /* ---------- 主题静态资源：/theme/{id}/{version}/... ---------- */
   app.get('/theme/:id/:version/*', (req, reply) => {
-    const { id, '*': file } = req.params as { id: string; '*': string };
-    const dir = themeAssetsDir(id);
+    const { id, version, '*': file } = req.params as { id: string; version: string; '*': string };
+    const dir = themeAssetsDir(id, version);
     if (!dir) return reply.code(404).send();
     return reply.sendFile(file, dir, { maxAge: config.isProd ? '365d' : 0, immutable: config.isProd });
   });

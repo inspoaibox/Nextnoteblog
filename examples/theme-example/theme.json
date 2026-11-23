@@ -1,0 +1,50 @@
+{
+  "id": "example",
+  "name": "示例主题",
+  "version": "1.0.0",
+  "author": "你的名字",
+  "description": "以“极简阅读”为底的示例主题，换了一套配色。复制它，改 id 和 name，就可以开始做自己的主题。",
+  "requires": ">=1.0.0",
+  "settings": [
+    {
+      "key": "marker",
+      "type": "color",
+      "label": "荧光笔颜色",
+      "hint": "浅色模式下链接悬停、当前导航的划线颜色",
+      "default": "#b8f2c8"
+    },
+    {
+      "key": "link",
+      "type": "color",
+      "label": "正文链接颜色",
+      "hint": "浅色模式下生效",
+      "default": "#0f766e"
+    },
+    {
+      "key": "measure",
+      "type": "select",
+      "label": "正文宽度",
+      "default": "46rem",
+      "options": [
+        {
+          "value": "40rem",
+          "label": "窄"
+        },
+        {
+          "value": "46rem",
+          "label": "适中"
+        },
+        {
+          "value": "54rem",
+          "label": "宽"
+        }
+      ]
+    },
+    {
+      "key": "hash_marks",
+      "type": "boolean",
+      "label": "显示标题左侧的 # 记号",
+      "default": true
+    }
+  ]
+}

@@ -282,3 +282,20 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); outline
 .table a.badge:hover { outline: 1px solid currentColor; }
 .form-narrow > .row { align-items: flex-start; }
 .form-narrow > .row .field { flex: 1; }
+
+/* ====================== M4：主题 ====================== */
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.theme-card { display: flex; flex-direction: column; gap: 8px; padding: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.theme-card.is-active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.theme-card header { display: flex; flex-direction: column; }
+.theme-card h2 { margin: 0; font-size: 1.1rem; }
+.theme-card p { margin: 0; }
+.theme-badges { display: flex; flex-wrap: wrap; gap: 4px; }
+.theme-badges .badge { margin: 0; }
+.theme-desc { flex: 1; }
+.theme-card footer { margin-top: 6px; }
+.config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0 20px; }
+.table.kv { margin-bottom: 14px; }
+.table.kv th { width: 7em; color: var(--muted); font-weight: 500; font-size: 13px; }
+.check-ok { color: var(--ok); font-weight: 500; }
+.modal-body h3:first-child { margin-top: 0; }

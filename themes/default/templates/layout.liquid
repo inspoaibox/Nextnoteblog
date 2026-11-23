@@ -16,8 +16,14 @@
   {% for alt in hreflang %}<link rel="alternate" hreflang="{{ alt.code }}" href="{{ alt.href }}">
   {% endfor %}<link rel="alternate" type="application/atom+xml" title="{{ site.name }}" href="{{ site.feed_url }}">
   <link rel="stylesheet" href="{{ 'style.css' | asset_url }}">
+  {% comment %} 管理员在后台调整的外观选项。值已由系统按类型校验（颜色、枚举），可以安全写入样式 {% endcomment %}
+  <style>
+    :root { --measure: {{ theme.config.measure }}; }
+    html[data-mode="light"] { --marker: {{ theme.config.marker }}; --link: {{ theme.config.link }}; }
+    @media (prefers-color-scheme: light) { html[data-mode="auto"] { --marker: {{ theme.config.marker }}; --link: {{ theme.config.link }}; } }
+  </style>
 </head>
-<body class="page-{{ page.type }}" data-locale="{{ site.locale }}" data-t-copied="{{ 'copied' | t }}" data-t-expand="{{ 'expand_code' | t }}" data-t-image="{{ 'image' | t }}">
+<body class="page-{{ page.type }}{% unless theme.config.hash_marks %} no-hash{% endunless %}" data-locale="{{ site.locale }}" data-t-copied="{{ 'copied' | t }}" data-t-expand="{{ 'expand_code' | t }}" data-t-image="{{ 'image' | t }}">
   <a class="skip-link" href="#main">{{ 'skip_to_content' | t }}</a>
   <div class="progress" aria-hidden="true"><span></span></div>
 

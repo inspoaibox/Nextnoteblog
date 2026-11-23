@@ -1,0 +1,43 @@
+{
+  "id": "docs",
+  "name": "技术文档",
+  "version": "1.0.0",
+  "author": "nexemcblog",
+  "description": "左侧固定导航与分类树，紧凑的列表，适合教程、手册和知识库类站点。",
+  "requires": ">=1.0.0",
+  "settings": [
+    {
+      "key": "accent",
+      "type": "color",
+      "label": "强调色",
+      "hint": "链接、当前导航项的颜色（浅色模式）",
+      "default": "#0b6bcb"
+    },
+    {
+      "key": "sidebar",
+      "type": "select",
+      "label": "侧边栏宽度",
+      "default": "17rem",
+      "options": [
+        {
+          "value": "15rem",
+          "label": "窄"
+        },
+        {
+          "value": "17rem",
+          "label": "适中"
+        },
+        {
+          "value": "20rem",
+          "label": "宽"
+        }
+      ]
+    },
+    {
+      "key": "show_tree",
+      "type": "boolean",
+      "label": "在侧边栏显示分类树",
+      "default": true
+    }
+  ]
+}

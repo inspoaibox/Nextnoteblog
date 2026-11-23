@@ -1,8 +1,50 @@
 {
   "id": "default",
   "name": "极简阅读",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "nexemcblog",
-  "description": "以正文阅读为中心的极简主题：窄栏排版、自动目录、亮暗自适应。",
-  "requires": ">=0.1.0"
+  "description": "以正文阅读为中心：标题悬挂 # 记号，荧光笔强调，首页是按年份排的文章索引。",
+  "requires": ">=1.0.0",
+  "settings": [
+    {
+      "key": "marker",
+      "type": "color",
+      "label": "荧光笔颜色",
+      "hint": "浅色模式下链接悬停、当前导航的划线颜色",
+      "default": "#ffe14d"
+    },
+    {
+      "key": "link",
+      "type": "color",
+      "label": "正文链接颜色",
+      "hint": "浅色模式下生效",
+      "default": "#2441c4"
+    },
+    {
+      "key": "measure",
+      "type": "select",
+      "label": "正文宽度",
+      "default": "46rem",
+      "options": [
+        {
+          "value": "40rem",
+          "label": "窄"
+        },
+        {
+          "value": "46rem",
+          "label": "适中"
+        },
+        {
+          "value": "54rem",
+          "label": "宽"
+        }
+      ]
+    },
+    {
+      "key": "hash_marks",
+      "type": "boolean",
+      "label": "显示标题左侧的 # 记号",
+      "default": true
+    }
+  ]
 }

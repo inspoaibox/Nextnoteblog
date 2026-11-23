@@ -1,0 +1,37 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="frame">
+  <header class="list-header">
+    <h1 class="hash" data-hash="#">{{ 'search' | t }}</h1>
+    <form class="search-form" action="{{ '/search' | url }}" method="get" role="search">
+      <input type="search" name="q" value="{{ query }}" placeholder="{{ 'search_placeholder' | t }}" aria-label="{{ 'search' | t }}" autofocus>
+      <button type="submit">{{ 'search' | t }}</button>
+    </form>
+    {% if query != "" %}<p>{{ 'search_count' | t | replace: '{n}', pagination.total }}</p>{% endif %}
+  </header>
+
+  {% if query != "" and results.size == 0 %}
+    <div class="empty">
+      <p class="empty-title">{{ 'search_empty' | t }}</p>
+      <p>{{ 'search_empty_hint' | t }}</p>
+    </div>
+    {% if suggestions.size > 0 %}
+      <h2 class="index-group">{{ 'latest' | t }}</h2>
+      {% render 'partials/post-index', posts: suggestions, skip_id: 0, flat: true %}
+    {% endif %}
+  {% else %}
+    <div class="index">
+      {% for post in results %}
+      <article class="row">
+        <time class="row-date" datetime="{{ post.date | date_iso }}">{{ post.date | date_fmt: 'short' }}</time>
+        <div class="row-main">
+          <h2 class="row-title"><a href="{{ post.url }}">{{ post.title_html | raw }}</a></h2>
+          <p class="row-excerpt">{{ post.excerpt_html | raw }}</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% render 'partials/pagination', pagination: pagination %}
+  {% endif %}
+</div>
+{% endblock %}

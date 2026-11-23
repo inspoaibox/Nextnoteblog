@@ -8,6 +8,7 @@ import * as postsSvc from '../services/posts.ts';
 import * as org from '../services/organize.ts';
 import { getSettings } from '../services/settings.ts';
 import { themeStrings } from '../theme/engine.ts';
+import { liveTheme } from '../services/themes.ts';
 
 function parse<T>(shape: z.ZodType<T>, data: unknown): T {
   const result = shape.safeParse(data ?? {});
@@ -78,10 +79,10 @@ export async function adminI18nRoutes(app: FastifyInstance) {
 
   // 每个文案项：默认语言的原文、主题自带的译文、后台的覆盖值
   app.get('/ui-strings', async (req) => {
-    const s = await getSettings();
     const def = await i18n.getDefaultLocale();
-    const base = themeStrings(s.activeTheme, def);
-    const own = themeStrings(s.activeTheme, req.contentLocale);
+    const themeId = (await liveTheme()).id;
+    const base = themeStrings(themeId, def);
+    const own = themeStrings(themeId, req.contentLocale);
     const overrides = await i18n.getUiOverrides(req.contentLocale);
     return {
       locale: req.contentLocale,

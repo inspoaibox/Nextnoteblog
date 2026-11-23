@@ -392,3 +392,11 @@ html[data-mode="dark"] .shiki, html[data-mode="dark"] .shiki span { color: var(-
 @media print {
   .lang-switch, .lang-hint { display: none !important; }
 }
+
+/* ====================== M4：主题配置 ====================== */
+.no-hash .hash::before { display: none; }
+@media (min-width: 900px) {
+  .no-hash .frame .post-content a.heading-anchor { position: static; padding: 0; margin-left: 0.4em; font-size: inherit; opacity: 0; }
+  .no-hash .frame .post-content a.heading-anchor::before { content: none; }
+  .no-hash .frame .post-content :is(h1, h2, h3, h4, h5, h6):hover > a.heading-anchor { opacity: 1; }
+}

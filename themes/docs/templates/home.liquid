@@ -1,0 +1,39 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="frame">
+  {% if pagination.page == 1 %}
+  <header class="list-header">
+    <h1>{{ site.name }}</h1>
+    {% if site.tagline != "" %}<p class="list-intro">{{ site.tagline }}</p>{% endif %}
+    {% if site.description != "" %}<p>{{ site.description }}</p>{% endif %}
+  </header>
+
+  {% if categories.size > 0 %}
+  <section class="doc-sections" aria-label="{{ 'categories' | t }}">
+    {% for cat in categories %}
+    <div class="doc-section">
+      <h2><a href="{{ cat.url }}">{{ cat.name }}</a><span>{{ cat.count }}</span></h2>
+      {% if cat.description != "" %}<p>{{ cat.description }}</p>{% endif %}
+      {% if cat.children.size > 0 %}<ul>{% for child in cat.children %}<li><a href="{{ child.url }}">{{ child.name }}</a><span>{{ child.count }}</span></li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endfor %}
+  </section>
+  {% endif %}
+  {% endif %}
+
+  <h2 class="doc-heading">{{ 'latest' | t }}</h2>
+  {% if posts.size == 0 %}
+    {% render 'partials/empty' %}
+  {% else %}
+    {% render 'partials/post-index', posts: posts, skip_id: 0, flat: true %}
+    {% render 'partials/pagination', pagination: pagination %}
+  {% endif %}
+
+  {% if pagination.page == 1 and tags.size > 0 %}
+  <h2 class="doc-heading">{{ 'tags' | t }}</h2>
+  <ul class="tag-cloud">
+    {% for tag in tags %}<li><a href="{{ tag.url }}">{{ tag.name }}</a><span>{{ tag.count }}</span></li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endblock %}

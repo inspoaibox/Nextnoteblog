@@ -1,0 +1,39 @@
+{
+  "id": "magazine",
+  "name": "杂志卡片",
+  "version": "1.0.0",
+  "author": "nexemcblog",
+  "description": "居中的刊头、大幅头条和带封面的卡片栅格，适合图文并重的内容。",
+  "requires": ">=1.0.0",
+  "settings": [
+    {
+      "key": "accent",
+      "type": "color",
+      "label": "强调色",
+      "hint": "刊头下的色条、链接悬停与标签的颜色",
+      "default": "#d0312d"
+    },
+    {
+      "key": "columns",
+      "type": "select",
+      "label": "卡片列数（宽屏）",
+      "default": "3",
+      "options": [
+        {
+          "value": "2",
+          "label": "两列"
+        },
+        {
+          "value": "3",
+          "label": "三列"
+        }
+      ]
+    },
+    {
+      "key": "serif_titles",
+      "type": "boolean",
+      "label": "标题使用衬线字体",
+      "default": true
+    }
+  ]
+}

@@ -345,3 +345,33 @@ export const uiTranslations = sqliteTable(
   },
   (t) => [uniqueIndex('ui_translations_pk').on(t.locale, t.key)],
 );
+
+/* ====================== M4：主题 ====================== */
+
+/** 每个主题的运行状态与配置（主题文件本身在磁盘上，版本目录即版本列表） */
+export const themeState = sqliteTable('theme_state', {
+  themeId: text('theme_id').primaryKey(),
+  /** 已上传主题当前使用的版本；内置主题为空 */
+  activeVersion: text('active_version').notNull().default(''),
+  /** 上一个使用的版本，用于一键回滚 */
+  previousVersion: text('previous_version').notNull().default(''),
+  /** 是否受信任：未受信任的主题，其脚本会被内容安全策略禁用 */
+  trusted: integer('trusted').notNull().default(0),
+  configDraft: text('config_draft').notNull().default('{}'),
+  configApplied: text('config_applied').notNull().default('{}'),
+  configPrevious: text('config_previous').notNull().default('{}'),
+  updatedAt: ts('updated_at').notNull(),
+});
+
+export const themeLog = sqliteTable(
+  'theme_log',
+  {
+    id: id(),
+    themeId: text('theme_id').notNull(),
+    action: text('action').notNull(), // install | upgrade | activate | rollback | version | uninstall | trust | config_apply | config_revert | config_reset | error
+    detail: text('detail').notNull().default(''),
+    userId: integer('user_id'),
+    createdAt: ts('created_at').notNull(),
+  },
+  (t) => [index('theme_log_created').on(t.createdAt)],
+);

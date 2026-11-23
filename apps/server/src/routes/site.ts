@@ -9,9 +9,15 @@ import * as i18n from '../services/i18n.ts';
 import { getSettings, isInstalled, type SiteSettings } from '../services/settings.ts';
 import { pageCache, renderRevision } from '../services/render.ts';
 import { renderPage, translate } from '../theme/engine.ts';
+import * as themes from '../services/themes.ts';
+import { PREVIEW_COOKIE } from './admin-themes.ts';
 
-/** 前台页面的内容安全策略：只允许本站脚本，为主题安全边界打基础 */
-const CSP = ["default-src 'self'", "img-src * data: blob:", "media-src *", "style-src 'self' 'unsafe-inline'", "script-src 'self'", "frame-ancestors 'self'", "base-uri 'self'", "form-action 'self'"].join('; ');
+/**
+ * 前台页面的内容安全策略。
+ * 受信任的主题可以运行自己目录里的脚本；未受信任的主题（刚上传的第三方主题）一律禁用脚本，
+ * 模板和样式照常生效。任何情况下都不允许内联脚本和外站脚本。
+ */
+const csp = (trusted: boolean) => ["default-src 'self'", "img-src * data: blob:", "media-src *", "style-src 'self' 'unsafe-inline'", `script-src ${trusted ? "'self'" : "'none'"}`, "frame-ancestors 'self'", "base-uri 'self'", "form-action 'self'"].join('; ');
 
 type ListRow = Awaited<ReturnType<typeof postsSvc.listPublic>>['items'][number];
 interface Crumb {
@@ -22,6 +28,9 @@ interface Crumb {
 type Alternate = (locale: string) => Promise<string | null> | string | null;
 /** 一次请求的语言环境 */
 interface Scope {
+  /** 本次请求使用的主题：正常是线上主题；管理员开启预览时是被预览的主题 */
+  theme: { id: string; version?: string; config: Record<string, unknown>; trusted: boolean };
+  previewing: boolean;
   locale: string;
   prefix: string;
   /** 已套用当前语言站点文案的设置 */
@@ -98,7 +107,19 @@ export async function siteRoutes(app: FastifyInstance) {
     const locale = (req.raw as { nbLocale?: string }).nbLocale ?? (await i18n.getDefaultLocale());
     const base = await i18n.getLocalizedSettings(locale);
     const ui = await i18n.getUiOverrides(locale);
-    return { locale, prefix: await i18n.prefixFor(locale), s: { ...base, defaultLocale: locale }, ui, t: (key, vars) => translate(base.activeTheme, locale, key, ui, vars) };
+    // 主题预览：必须同时有预览 Cookie 和有效的管理员会话，访客即使伪造 Cookie 也看不到
+    let theme: Scope['theme'] = await themes.liveTheme();
+    let previewing = false;
+    const wanted = req.cookies[PREVIEW_COOKIE];
+    if (wanted && (await auth.getSessionUser(req.cookies[auth.SESSION_COOKIE]))) {
+      const [id, version] = wanted.split('@');
+      const candidate = themes.previewTheme(id, version);
+      if (candidate) {
+        theme = candidate;
+        previewing = true;
+      }
+    }
+    return { theme, previewing, locale, prefix: await i18n.prefixFor(locale), s: { ...base, defaultLocale: locale }, ui, t: (key, vars) => translate(theme.id, locale, key, ui, vars) };
   }
 
   const origin = (req: FastifyRequest, s: SiteSettings) => s.siteUrl || `${req.protocol}://${req.host}`;
@@ -142,19 +163,38 @@ export async function siteRoutes(app: FastifyInstance) {
       footer_text: s.footerText,
       year: new Date().getFullYear(),
       feed_url: join(sc.prefix, '/feed.xml'),
+      // 完整的分类树：供需要侧边栏导航的主题使用
+      categories: withPrefix((await tax.getTree(sc.locale)).roots.filter((c) => c.visible).map(catView), sc.prefix),
     };
     const page = rest.page as Record<string, unknown> | undefined;
     // 只有真正存在对应译文的语言才输出 hreflang
     const hreflang = page?.noindex ? [] : languages.filter((l) => l.available).map((l) => ({ code: l.code, href: `${s.siteUrl}${l.current ? join(sc.prefix, path) : l.href}` }));
-    const html = await renderPage(s.activeTheme, template, { site, nav: withPrefix(nav, sc.prefix), query: '', languages, hreflang, _ui: sc.ui, ...withPrefix(rest, sc.prefix) });
-    if (key) pageCache.set(cacheKey(sc, key), { html, status });
-    return reply.code(status).header('content-security-policy', CSP).header('content-language', sc.locale).type('text/html; charset=utf-8').send(html);
+    const context = { site, nav: withPrefix(nav, sc.prefix), query: '', languages, hreflang, _ui: sc.ui, ...withPrefix(rest, sc.prefix) };
+    let html: string;
+    let trusted = sc.theme.trusted;
+    try {
+      html = await renderPage(sc.theme.id, template, context, { version: sc.theme.version, config: sc.theme.config });
+    } catch (err) {
+      // 主题出错不能让站点打不开：记录错误，用内置的默认主题渲染这一次请求
+      if (sc.theme.id === 'default') throw err;
+      req.log.error({ err, theme: sc.theme.id, template }, '主题渲染失败，已临时改用默认主题');
+      html = await renderPage('default', template, { ...context, site: { ...site } });
+      trusted = true;
+    }
+    if (sc.previewing) {
+      // 预览提示条由系统插入，不依赖被预览的主题；预览页面不缓存
+      const bar = `<div style="position:fixed;left:0;right:0;bottom:0;z-index:2147483647;padding:8px 16px;background:#1f2328;color:#fff;font:14px/1.5 system-ui,sans-serif;text-align:center">正在预览主题「${sc.theme.id}${sc.theme.version ? ` ${sc.theme.version}` : ''}」，仅你可见，访客看到的仍是线上主题。 <a href="/admin/themes" style="color:#ffe14d">返回主题管理</a></div>`;
+      html = html.replace(/<\/body>/i, `${bar}</body>`);
+      reply.header('cache-control', 'no-store').header('x-robots-tag', 'noindex');
+    } else if (key) pageCache.set(cacheKey(sc, key), { html, status });
+    return reply.code(status).header('content-security-policy', csp(trusted)).header('content-language', sc.locale).type('text/html; charset=utf-8').send(html);
   }
 
   function sendCached(reply: FastifyReply, sc: Scope, key: string) {
+    if (sc.previewing) return false; // 预览不读缓存
     const hit = pageCache.get(cacheKey(sc, key));
     if (!hit) return false;
-    reply.code(hit.status).header('content-security-policy', CSP).header('content-language', sc.locale).header('x-cache', 'hit').type('text/html; charset=utf-8').send(hit.html);
+    reply.code(hit.status).header('content-security-policy', csp(sc.theme.trusted)).header('content-language', sc.locale).header('x-cache', 'hit').type('text/html; charset=utf-8').send(hit.html);
     return true;
   }
 

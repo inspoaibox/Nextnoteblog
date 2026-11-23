@@ -1,0 +1,8 @@
+{% if crumbs.size > 0 %}
+<nav class="crumbs" aria-label="{{ 'breadcrumb' | t }}">
+  <ol>
+    <li><a href="{{ '/' | url }}">{{ 'nav_home' | t }}</a></li>
+    {% for crumb in crumbs %}<li><a href="{{ crumb.url }}">{{ crumb.name }}</a></li>{% endfor %}
+  </ol>
+</nav>
+{% endif %}

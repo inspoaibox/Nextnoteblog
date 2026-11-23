@@ -13,6 +13,8 @@ import { getSettings, isInstalled, updateSettings } from '../services/settings.t
 import { loadTheme } from '../theme/engine.ts';
 import { adminOrgRoutes } from './admin-org.ts';
 import { adminI18nRoutes } from './admin-i18n.ts';
+import { adminThemeRoutes } from './admin-themes.ts';
+import { liveTheme } from '../services/themes.ts';
 import * as i18n from '../services/i18n.ts';
 import * as searchSvc from '../services/search.ts';
 import { getTree, descendantIds, invalidateTaxonomy } from '../services/taxonomy.ts';
@@ -77,7 +79,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.get('/status', async (req) => {
     const s = await getSettings();
-    const theme = loadTheme(s.activeTheme);
+    const theme = loadTheme((await liveTheme()).id);
     return {
       installed: await isInstalled(),
       user: req.user,
@@ -342,6 +344,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   await app.register(adminOrgRoutes);
   await app.register(adminI18nRoutes);
+  await app.register(adminThemeRoutes);
 }
 
 declare module 'fastify' {
