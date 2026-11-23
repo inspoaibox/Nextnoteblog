@@ -32,7 +32,7 @@ pnpm install
 pnpm dev          # 服务端 :3100，后台开发服务器 :5173
 ```
 
-开发时访问 `http://localhost:5173/admin/`（带热更新）；前台访问 `http://localhost:3100/`。
+开发时统一访问 `http://localhost:5173/`：`/admin/` 是带热更新的后台，其余地址由开发服务器转给服务端，所以“查看站点”、文章预览、主题预览等链接都能直接用。
 开发模式固定用 3100 端口，避开常被其他程序占用的 3000；要换端口可改 `apps/server/package.json` 的 `dev` 脚本，并用环境变量 `BLOG_BACKEND` 告诉后台开发服务器。
 
 ```bash
