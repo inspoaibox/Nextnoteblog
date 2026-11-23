@@ -55,7 +55,7 @@ my-theme/
 
 | 字段 | 要求 |
 |---|---|
-| `id` | 2–40 位小写字母、数字、连字符。不能与内置主题（`default`、`docs`、`magazine`）相同。同一个 `id` 再次上传视为升级 |
+| `id` | 2–40 位小写字母、数字、连字符。不能与内置主题（`default`、`docs`、`magazine`、`riso`、`aurora`、`zine`）相同。同一个 `id` 再次上传视为升级 |
 | `version` | 三段版本号，如 `1.2.0`。升级时必须提高版本号 |
 | `requires` | 需要的主题规范版本，写成 `>=1.0.0` |
 | `settings` | 管理员可调整的选项，后台据此生成配置表单 |
@@ -166,6 +166,8 @@ html[data-mode="dark"] .shiki, html[data-mode="dark"] .shiki span { color: var(-
 ## 亮暗模式
 
 亮暗由管理员统一决定，体现在 `<html data-mode="light|dark|auto">`。`auto` 表示跟随访客的系统设置，用 `@media (prefers-color-scheme: dark)` 配合 `html[data-mode="auto"]` 处理。
+
+风格本身就只有一种明暗的主题（例如印刷风格只有浅色、夜空风格只有深色），可以在 `layout.liquid` 里把 `data-mode` 和 `<meta name="color-scheme">` 直接写死为 `light` 或 `dark`，并在主题说明里注明；内置的“孔版印刷”“拼贴”“极光”就是这样做的。
 
 **主题不得提供让访客切换主题或亮暗的控件，也不要保存这类访客偏好。**
 

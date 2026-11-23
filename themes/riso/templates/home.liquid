@@ -1,0 +1,59 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="frame">
+  {% if pagination.page == 1 %}
+  <section class="rmast">
+    <h1 class="rmast-name">{{ site.name }}</h1>
+    {% if site.tagline != "" %}<p class="rmast-tagline">{{ site.tagline }}</p>{% endif %}
+    {% if site.description != "" %}<p class="rmast-intro">{{ site.description }}</p>{% endif %}
+  </section>
+  {% endif %}
+
+  {% if posts.size == 0 %}
+    {% render 'partials/empty' %}
+  {% else %}
+    {% comment %} 首页第一页：最新的一篇非置顶文章做头条 {% endcomment %}
+    {% assign lead = nil %}
+    {% if pagination.page == 1 %}
+      {% for p in posts %}{% unless p.pinned %}{% assign lead = p %}{% break %}{% endunless %}{% endfor %}
+    {% endif %}
+    {% if lead %}
+    <article class="rlead">
+      <a class="rlead-cover" href="{{ lead.url }}" tabindex="-1" aria-hidden="true">{% if lead.cover != "" %}<img src="{{ lead.cover }}" alt="" decoding="async">{% else %}<span class="rcard-glyph">{{ lead.title | slice: 0, 1 }}</span>{% endif %}<i class="halftone"></i></a>
+      <div class="rlead-body">
+        <p class="rcard-meta"><time datetime="{{ lead.date | date_iso }}">{{ lead.date | date_fmt }}</time></p>
+        <h2 class="rlead-title"><a href="{{ lead.url }}">{{ lead.title }}</a></h2>
+        {% if lead.excerpt != "" %}<p class="rlead-excerpt">{{ lead.excerpt }}</p>{% endif %}
+        <p class="rcard-foot">{{ lead.reading_minutes }} {{ 'minutes' | t }}</p>
+      </div>
+    </article>
+    {% endif %}
+
+    {% if lead %}{% render 'partials/post-index', posts: posts, skip_id: lead.id %}{% else %}{% render 'partials/post-index', posts: posts, skip_id: 0 %}{% endif %}
+    {% render 'partials/pagination', pagination: pagination %}
+  {% endif %}
+
+  {% if pagination.page == 1 %}
+  {% if categories.size > 0 or tags.size > 0 %}
+  <section class="browse">
+    {% if categories.size > 0 %}
+    <div>
+      <h2>{{ 'categories' | t }}</h2>
+      <ul class="tag-cloud">
+        {% for cat in categories %}<li><a href="{{ cat.url }}">{{ cat.name }}</a><span>{{ cat.count }}</span></li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {% if tags.size > 0 %}
+    <div>
+      <h2>{{ 'tags' | t }}</h2>
+      <ul class="tag-cloud">
+        {% for tag in tags %}<li><a href="{{ tag.url }}">{{ tag.name }}</a><span>{{ tag.count }}</span></li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </section>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

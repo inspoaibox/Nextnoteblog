@@ -1,0 +1,38 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="frame">
+  {% render 'partials/crumbs', crumbs: crumbs %}
+  <header class="list-header">
+    <h1 class="hash" data-hash="#">{{ category.name }}</h1>
+    {% if category.description != "" %}<p class="list-intro">{{ category.description }}</p>{% endif %}
+    <p>{{ 'post_count' | t | replace: '{n}', pagination.total }}</p>
+  </header>
+
+  {% if category.has_children %}
+  <nav class="subcats" aria-label="{{ 'subcategories' | t }}">
+    <ul>
+      {% for child in category.children %}
+      <li><a href="{{ child.url }}">{{ child.name }}</a><span>{{ child.count }}</span></li>
+      {% endfor %}
+    </ul>
+    <p class="scope">
+      {% if category.self_only %}
+        <a href="{{ category.url }}">{{ 'scope_all' | t }}</a>
+      {% else %}
+        <a href="{{ category.self_url }}">{{ 'scope_self' | t | replace: '{n}', category.self_count }}</a>
+      {% endif %}
+    </p>
+  </nav>
+  {% endif %}
+
+  {% if posts.size == 0 %}
+    <div class="empty">
+      <p class="empty-title">{{ 'category_empty' | t }}</p>
+      <p><a href="{{ '/posts' | url }}">{{ 'all_posts' | t }}</a></p>
+    </div>
+  {% else %}
+    {% render 'partials/post-index', posts: posts, skip_id: 0 %}
+    {% render 'partials/pagination', pagination: pagination %}
+  {% endif %}
+</div>
+{% endblock %}

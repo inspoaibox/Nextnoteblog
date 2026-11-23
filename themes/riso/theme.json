@@ -1,0 +1,61 @@
+{
+  "id": "riso",
+  "name": "孔版印刷",
+  "version": "1.0.0",
+  "author": "nexemcblog",
+  "description": "模仿 Risograph 孔版印刷：两种专色叠印、错位套色的大标题、双色封面与纸张颗粒。始终为浅色。",
+  "requires": ">=1.0.0",
+  "settings": [
+    {
+      "key": "ink_a",
+      "type": "color",
+      "label": "第一种专色",
+      "hint": "标题错位的底色、封面与强调色",
+      "default": "#ff48b0"
+    },
+    {
+      "key": "ink_b",
+      "type": "color",
+      "label": "第二种专色",
+      "hint": "标题、链接与另一半封面",
+      "default": "#0078bf"
+    },
+    {
+      "key": "paper",
+      "type": "select",
+      "label": "纸张",
+      "default": "#f6f6f1",
+      "options": [
+        {
+          "value": "#f6f6f1",
+          "label": "白纸"
+        },
+        {
+          "value": "#eef2f4",
+          "label": "冷灰纸"
+        },
+        {
+          "value": "#fdf0f6",
+          "label": "淡粉纸"
+        },
+        {
+          "value": "#f1f6e9",
+          "label": "淡绿纸"
+        }
+      ]
+    },
+    {
+      "key": "grain",
+      "type": "boolean",
+      "label": "纸张颗粒",
+      "default": true
+    },
+    {
+      "key": "duotone",
+      "type": "boolean",
+      "label": "封面图做成双色印刷效果",
+      "hint": "关闭后显示原图",
+      "default": true
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "id": "aurora",
+  "name": "极光",
+  "version": "1.0.0",
+  "author": "nexemcblog",
+  "description": "深色夜空里缓慢流动的极光色带与星点，内容放在毛玻璃面板中，站名用极光渐变大字。始终为深色。",
+  "requires": ">=1.0.0",
+  "settings": [
+    {
+      "key": "palette",
+      "type": "select",
+      "label": "极光配色",
+      "default": "aurora",
+      "options": [
+        {
+          "value": "aurora",
+          "label": "极光（青·紫·粉）"
+        },
+        {
+          "value": "sunset",
+          "label": "落日（橙·粉·紫）"
+        },
+        {
+          "value": "ocean",
+          "label": "深海（蓝·青·绿）"
+        }
+      ]
+    },
+    {
+      "key": "motion",
+      "type": "boolean",
+      "label": "极光缓慢流动",
+      "hint": "访客系统设置了“减少动态效果”时始终静止",
+      "default": true
+    },
+    {
+      "key": "stars",
+      "type": "boolean",
+      "label": "星点",
+      "default": true
+    }
+  ]
+}

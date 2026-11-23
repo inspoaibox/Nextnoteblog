@@ -70,16 +70,18 @@ after(async () => {
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
-test('主题库：三套内置主题，默认主题生效；访客页面没有任何主题切换控件', async () => {
+const BUILTIN = ['aurora', 'default', 'docs', 'magazine', 'riso', 'zine'];
+
+test('主题库：六套内置主题，默认主题生效；访客页面没有任何主题切换控件', async () => {
   const lib = (await api('GET', '/themes')).body;
-  assert.deepEqual(lib.themes.map((t: { id: string }) => t.id).sort(), ['default', 'docs', 'magazine']);
+  assert.deepEqual(lib.themes.map((t: { id: string }) => t.id).sort(), BUILTIN);
   assert.equal(lib.active, 'default');
   assert.ok(lib.themes.every((t: { source: string; trusted: boolean; compatible: boolean }) => t.source === 'builtin' && t.trusted && t.compatible));
 
   const home = await page('/');
   assert.doesNotMatch(home.body, /theme-switch|data-theme-select|切换主题/);
   assert.doesNotMatch(String(home.headers['set-cookie'] ?? ''), /theme/i, '不给访客写任何主题相关的 Cookie');
-  for (const id of ['default', 'docs', 'magazine']) assert.equal((await page(`/theme/${id}/1.0.0/style.css`)).statusCode, 200);
+  for (const id of BUILTIN) assert.equal((await page(`/theme/${id}/1.0.0/style.css`)).statusCode, 200);
 });
 
 test('切换内置主题：全站统一生效，内容与地址不变；可一键回退', async () => {
@@ -102,6 +104,48 @@ test('切换内置主题：全站统一生效，内容与地址不变；可一�
   await api('POST', '/themes/default/activate');
   assert.equal((await api('GET', '/themes')).body.previous, 'docs');
   assert.equal((await api('POST', '/themes/nope/activate')).status, 404);
+});
+
+test('视觉主题：孔版印刷、极光、拼贴都能启用，明暗固定，配置项生效，文章内容不变', async () => {
+  // 管理员把外观设成深色：始终浅色的主题不能被带成深色
+  await api('PUT', '/settings', { appearance: 'dark' });
+  const cases: [string, RegExp, string][] = [
+    ['riso', /class="rmast"/, 'light'],
+    ['aurora', /class="sky"/, 'dark'],
+    ['zine', /class="ticker"/, 'light'],
+  ];
+  for (const [id, marker, mode] of cases) {
+    assert.equal((await api('POST', `/themes/${id}/activate`)).status, 200, `${id} 可以启用`);
+    const home = (await page('/')).body;
+    assert.match(home, marker);
+    assert.match(home, new RegExp(`<html lang="zh-CN" data-mode="${mode}">`), `${id} 固定为 ${mode}`);
+    const post = (await page('/posts/hello-theme')).body;
+    assert.match(post, /正文内容/);
+    assert.match(post, /class="post-content"/);
+    assert.equal((await page('/no-such')).statusCode, 404);
+    assert.equal((await page(`/theme/${id}/1.0.0/style.css`)).statusCode, 200);
+  }
+
+  // 配置项：拼贴的背景色、关闭滚动字幕；极光换配色、关闭流动；孔版印刷关闭颗粒
+  await api('PUT', '/themes/zine/config', { values: { bg: '#00aa55', ticker: false } });
+  await api('POST', '/themes/zine/config/apply');
+  await api('POST', '/themes/zine/activate');
+  let html = (await page('/')).body;
+  assert.match(html, /--bg: #00aa55/);
+  assert.doesNotMatch(html, /class="ticker"/);
+  await api('PUT', '/themes/aurora/config', { values: { palette: 'sunset', motion: false } });
+  await api('POST', '/themes/aurora/config/apply');
+  await api('POST', '/themes/aurora/activate');
+  html = (await page('/')).body;
+  assert.match(html, /palette-sunset/);
+  assert.match(html, / still/);
+  await api('PUT', '/themes/riso/config', { values: { grain: false, duotone: false } });
+  await api('POST', '/themes/riso/config/apply');
+  await api('POST', '/themes/riso/activate');
+  assert.doesNotMatch((await page('/')).body, /<body class="page-home[^"]*grain/);
+
+  await api('PUT', '/settings', { appearance: 'auto' });
+  await api('POST', '/themes/default/activate');
 });
 
 test('主题配置：草稿不影响线上，预览可见，应用后生效，可回退与恢复默认', async () => {
@@ -157,7 +201,7 @@ test('导入校验：各类不合格的安装包都被拒绝，并说明原因�
   await check(zip(themeFiles({ 'templates/archive.liquid': '<p>没有布局</p>' })), /不是完整的页面/);
   await check(zip(themeFiles({}, { settings: [{ key: 'c', type: 'color', label: 'x', default: 'blue' }] })), /默认值与它的类型不符/);
 
-  assert.equal((await api('GET', '/themes')).body.themes.length, 3, '没有任何东西被安装');
+  assert.equal((await api('GET', '/themes')).body.themes.length, BUILTIN.length, '没有任何东西被安装');
   assert.equal(fs.existsSync(path.join(dataDir, 'themes', 'paper')), false);
   assert.equal((await page('/')).statusCode, 200);
 });
@@ -169,7 +213,7 @@ test('导入 → 预览 → 切换：新主题默认不受信任，脚本被禁�
   assert.equal(report.manifest.id, 'paper');
   assert.deepEqual(report.scripts, ['assets/main.js']);
   assert.ok(report.warnings.some((w: string) => /脚本文件/.test(w)), '提示包含脚本');
-  assert.equal((await api('GET', '/themes')).body.themes.length, 3, '检查不会安装');
+  assert.equal((await api('GET', '/themes')).body.themes.length, BUILTIN.length, '检查不会安装');
 
   // 包在一个顶层文件夹里的压缩包同样可以安装
   const wrapped = Object.fromEntries(Object.entries(themeFiles()).map(([k, v]) => [`paper-theme/${k}`, v]));
@@ -255,7 +299,7 @@ test('卸载：使用中的主题不能卸载；切走后可以卸载，文件�
   assert.equal((await api('DELETE', '/themes/paper')).status, 200);
   assert.equal(fs.existsSync(path.join(dataDir, 'themes', 'paper')), false);
   const lib = (await api('GET', '/themes')).body;
-  assert.equal(lib.themes.length, 3);
+  assert.equal(lib.themes.length, BUILTIN.length);
   assert.equal(lib.previous, '', '被卸载的主题不再是“上一个主题”');
   assert.ok(lib.logs.some((l: { action: string; themeId: string }) => l.action === 'uninstall' && l.themeId === 'paper'), '操作有记录');
   assert.equal((await page('/')).statusCode, 200);

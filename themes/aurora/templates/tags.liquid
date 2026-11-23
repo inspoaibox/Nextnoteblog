@@ -1,0 +1,15 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="frame">
+  <header class="list-header">
+    <h1 class="hash" data-hash="#">{{ 'tags' | t }}</h1>
+  </header>
+  {% if tags.size == 0 %}
+    {% render 'partials/empty' %}
+  {% else %}
+    <ul class="tag-cloud">
+      {% for tag in tags %}<li><a href="{{ tag.url }}">{{ tag.name }}</a><span>{{ tag.count }}</span></li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endblock %}
