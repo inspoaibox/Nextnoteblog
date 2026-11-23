@@ -1,0 +1,39 @@
+{
+  "id": "win7",
+  "name": "Windows 7 风格",
+  "version": "1.0.0",
+  "author": "nexemcblog",
+  "description": "把整个站点做成一台 Windows 7 风格的桌面：桌面图标与开始菜单是导航，文章列表是资源管理器里的文件，内容在可拖动、可最小化 / 最大化 / 关闭的 Aero 玻璃窗口里打开。始终为浅色。",
+  "requires": ">=1.0.0",
+  "settings": [
+    {
+      "key": "tint",
+      "type": "select",
+      "label": "窗口颜色",
+      "hint": "玻璃边框与桌面的色调",
+      "default": "sky",
+      "options": [
+        {
+          "value": "sky",
+          "label": "天空"
+        },
+        {
+          "value": "twilight",
+          "label": "黄昏"
+        },
+        {
+          "value": "leaf",
+          "label": "叶"
+        },
+        {
+          "value": "ruby",
+          "label": "红宝石"
+        },
+        {
+          "value": "frost",
+          "label": "霜"
+        }
+      ]
+    }
+  ]
+}

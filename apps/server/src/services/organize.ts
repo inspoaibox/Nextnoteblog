@@ -269,7 +269,7 @@ export const listPublicPages = (locale: string) =>
 /* ====================== 导航菜单 ====================== */
 
 export type NavMenu = 'header' | 'footer';
-export const NAV_TYPES = ['home', 'posts', 'archive', 'category', 'tag', 'collection', 'page', 'post', 'url'] as const;
+export const NAV_TYPES = ['home', 'posts', 'archive', 'projects', 'links', 'category', 'tag', 'collection', 'page', 'post', 'url'] as const;
 export type NavType = (typeof NAV_TYPES)[number];
 
 export interface NavInput {
@@ -288,6 +288,8 @@ const BUILTIN: Record<string, { url: string; label: string; labelKey: string }> 
   home: { url: '/', label: '首页', labelKey: 'nav_home' },
   posts: { url: '/posts', label: '文章', labelKey: 'nav_posts' },
   archive: { url: '/archive', label: '归档', labelKey: 'archive' },
+  projects: { url: '/projects', label: '开源项目', labelKey: 'nav_projects' },
+  links: { url: '/links', label: '友链', labelKey: 'nav_links' },
 };
 const DEFAULT_HEADER: NavInput[] = [{ type: 'home' }, { type: 'posts' }, { type: 'archive' }];
 

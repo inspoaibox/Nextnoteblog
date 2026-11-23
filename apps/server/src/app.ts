@@ -16,6 +16,7 @@ import { invalidateTaxonomy } from './services/taxonomy.ts';
 import { indexedCount, rebuildIndex } from './services/search.ts';
 import { listLanguages, splitLocale } from './services/i18n.ts';
 import { initThemes } from './services/themes.ts';
+import { ensureStarterContent } from './services/starter.ts';
 import { autoBackupIfDue } from './services/backup.ts';
 import { restoredFrom } from './db/index.ts';
 
@@ -24,6 +25,8 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
 
   await listLanguages(); // 预热语言表，地址改写是同步的
   await initThemes();
+  // 已经安装的站点升级后补上内置的起步内容（每个站点只做一次）
+  await ensureStarterContent();
 
   const app = Fastify({
     // /en/posts/x → /posts/x，并记下语言；这样所有前台路由天然支持每一种语言

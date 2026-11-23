@@ -31,7 +31,8 @@
     <button class="lang-hint-close" type="button">{{ 'lang_suggest_dismiss' | t }}</button>
   </div>
   {% endif %}
-  <div class="sky" aria-hidden="true"><span class="band b1"></span><span class="band b2"></span><span class="band b3"></span></div>
+  {% comment %} 极光只在页面顶部：一层柔光打底，两层竖向光束以不同速度缓慢平移 {% endcomment %}
+  <div class="sky" aria-hidden="true"><span class="glow"></span><span class="rays r1"></span><span class="rays r2"></span></div>
   <header class="site-header ahead">
     <div class="frame">
       <a class="brand" href="{{ '/' | url }}">{{ site.name }}</a>

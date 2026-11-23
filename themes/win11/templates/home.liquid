@@ -1,0 +1,8 @@
+{% layout 'layout' %}
+{% block content %}
+{% comment %} 首页就是桌面：每篇文章是一个桌面图标，点开在窗口里阅读。站名只给读屏软件和搜索引擎 {% endcomment %}
+<h1 class="sr-only">{{ site.name }}</h1>
+<a class="icon" href="{{ '/posts' | url }}" data-launch><span class="ico folder" aria-hidden="true"></span><span class="icon-name">{{ 'all_posts' | t }}</span></a>
+{% for post in posts %}<a class="icon" href="{{ post.url }}" data-launch title="{{ post.title }}"><span class="ico page{% if post.cover != "" %} has-thumb{% endif %}" aria-hidden="true">{% if post.cover != "" %}<img src="{{ post.cover }}" alt="" loading="lazy" decoding="async">{% endif %}</span><span class="icon-name">{{ post.title }}</span></a>
+{% endfor %}
+{% endblock %}

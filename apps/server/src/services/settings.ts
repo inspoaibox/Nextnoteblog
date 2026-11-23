@@ -21,6 +21,11 @@ export interface SiteSettings {
   langFallback: 'home' | 'hide';
   /** 让搜索引擎不要收录整个站点（建站初期、内部站点用） */
   siteNoindex: boolean;
+  /** 友链页、开源项目页顶部的说明（Markdown，默认语言） */
+  linksIntro: string;
+  projectsIntro: string;
+  /** 已经放进站点的起步内容版本（见 services/starter.ts） */
+  starterVersion: number;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -38,6 +43,9 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   footerText: '',
   langFallback: 'home',
   siteNoindex: false,
+  linksIntro: '',
+  projectsIntro: '',
+  starterVersion: 0,
 };
 
 let cache: SiteSettings | null = null;

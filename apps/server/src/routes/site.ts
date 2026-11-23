@@ -8,7 +8,8 @@ import * as searchSvc from '../services/search.ts';
 import * as i18n from '../services/i18n.ts';
 import { getSettings, isInstalled, type SiteSettings } from '../services/settings.ts';
 import { pageCache, renderRevision } from '../services/render.ts';
-import { renderPage, translate } from '../theme/engine.ts';
+import { OPTIONAL_TEMPLATES, renderPage, themeHasTemplate, translate } from '../theme/engine.ts';
+import * as showcase from '../services/showcase.ts';
 import * as themes from '../services/themes.ts';
 import { PREVIEW_COOKIE } from './admin-themes.ts';
 
@@ -116,7 +117,9 @@ export async function siteRoutes(app: FastifyInstance) {
     if (wanted && (await auth.getSessionUser(req.cookies[auth.SESSION_COOKIE]))) {
       const [id, version] = wanted.split('@');
       const candidate = themes.previewTheme(id, version);
-      if (candidate) {
+      // 预览的内容与线上完全一样（同一主题、同一版本、同样的配置）时不算预览：访客看到的就是这个
+      const same = candidate && candidate.id === theme.id && (candidate.version ?? '') === (theme.version ?? '') && JSON.stringify(candidate.config) === JSON.stringify(theme.config);
+      if (candidate && !same) {
         theme = candidate;
         previewing = true;
       }
@@ -172,9 +175,15 @@ export async function siteRoutes(app: FastifyInstance) {
     if (page && s.siteNoindex) page.noindex = true;
     // 只有真正存在对应译文的语言才输出 hreflang
     const hreflang = page?.noindex ? [] : languages.filter((l) => l.available).map((l) => ({ code: l.code, href: `${s.siteUrl}${l.current ? join(sc.prefix, path) : l.href}` }));
-    const context = { site, nav: withPrefix(nav, sc.prefix), query: '', languages, hreflang, _ui: sc.ui, ...withPrefix(rest, sc.prefix) };
+    let context: Record<string, unknown> = { site, nav: withPrefix(nav, sc.prefix), query: '', languages, hreflang, _ui: sc.ui, ...withPrefix(rest, sc.prefix) };
     let html: string;
     let trusted = sc.theme.trusted;
+    // 主题没有这个可选模板：用默认主题的片段生成正文，放进本主题的 page 模板
+    if (OPTIONAL_TEMPLATES.includes(template) && !themeHasTemplate(sc.theme.id, template, sc.theme.version)) {
+      const body = await renderPage('default', `partials/${template}-body`, { ...context, embedded: true });
+      context = { ...context, content: { title: String(rest.heading ?? ''), html: body, bare: true } };
+      template = 'page';
+    }
     try {
       html = await renderPage(sc.theme.id, template, context, { version: sc.theme.version, config: sc.theme.config });
     } catch (err) {
@@ -591,6 +600,12 @@ export async function siteRoutes(app: FastifyInstance) {
     // 一组互为译文的地址：每个 <url> 都列出全部语言版本
     const groups: { locale: string; path: string; lastmod?: number | null }[][] = [];
     for (const path of ['/', '/posts', '/archive']) groups.push(langs.map((l) => ({ locale: l.code, path })));
+    const projectList = await showcase.listPublicProjects(langs[0]?.code ?? s.defaultLocale);
+    if (projectList.length) {
+      groups.push(langs.map((l) => ({ locale: l.code, path: '/projects' })));
+      for (const p of projectList) groups.push(langs.map((l) => ({ locale: l.code, path: p.url, lastmod: p.updated_at })));
+    }
+    if ((await showcase.publicLinkGroups()).length) groups.push(langs.map((l) => ({ locale: l.code, path: '/links' })));
 
     const byPost = new Map<number, { locale: string; path: string; lastmod?: number | null }[]>();
     const byPage = new Map<number, { locale: string; path: string; lastmod?: number | null }[]>();
@@ -620,6 +635,86 @@ export async function siteRoutes(app: FastifyInstance) {
     const s = await getSettings();
     if (s.siteNoindex) return reply.type('text/plain; charset=utf-8').send('User-agent: *\nDisallow: /\n');
     return reply.type('text/plain; charset=utf-8').send(`User-agent: *\nDisallow: /admin/\nDisallow: /preview/\nDisallow: /search\n\nSitemap: ${origin(req, s)}/sitemap.xml\n`);
+  });
+
+  /* ---------- 友链与开源项目 ---------- */
+
+  // 说明文字只有默认语言一份：其他语言也显示它
+  const introHtml = async (sc: Scope, markdown: string) => (markdown.trim() ? (await renderMarkdown(markdown, { labels: labelsOf(sc) })).html : '');
+
+  app.get('/links', async (req, reply) => {
+    const sc = await scopeOf(req);
+    if (sendCached(reply, sc, 'links')) return reply;
+    const heading = sc.t('nav_links');
+    return send(
+      req,
+      reply,
+      sc,
+      'links',
+      {
+        page: { title: `${heading} - ${sc.s.siteName}`, description: '', type: 'links', canonical: canonical(sc, '/links') },
+        heading,
+        intro_html: await introHtml(sc, sc.s.linksIntro),
+        link_groups: await showcase.publicLinkGroups(),
+        alternate: same('/links'),
+      },
+      200,
+      'links',
+    );
+  });
+
+  app.get('/projects', async (req, reply) => {
+    const sc = await scopeOf(req);
+    if (sendCached(reply, sc, 'projects')) return reply;
+    const heading = sc.t('nav_projects');
+    return send(
+      req,
+      reply,
+      sc,
+      'projects',
+      {
+        page: { title: `${heading} - ${sc.s.siteName}`, description: '', type: 'projects', canonical: canonical(sc, '/projects') },
+        heading,
+        intro_html: await introHtml(sc, sc.s.projectsIntro),
+        projects: await showcase.listPublicProjects(sc.locale),
+        alternate: same('/projects'),
+      },
+      200,
+      'projects',
+    );
+  });
+
+  app.get('/projects/:slug', async (req, reply) => {
+    const sc = await scopeOf(req);
+    const { slug } = req.params as { slug: string };
+    const key = `project:${slug}`;
+    if (sendCached(reply, sc, key)) return reply;
+    const found = await showcase.getPublicProject(sc.locale, slug);
+    if (!found) return notFoundPage(req, reply);
+    const { view, markdown, tagId } = found;
+    const rendered = markdown.trim() ? await renderMarkdown(markdown, { labels: labelsOf(sc) }) : null;
+    // 相关文章：带项目关联标签的已发布文章（发布说明、教程等）
+    const tag = tagId ? (await tax.listTags(sc.locale)).find((t) => t.id === tagId) : undefined;
+    const related = tagId ? await postsSvc.listPublic(sc.locale, 1, 10, { tagId }) : { total: 0, items: [] };
+    return send(
+      req,
+      reply,
+      sc,
+      'project',
+      {
+        page: { title: `${view.name} - ${sc.s.siteName}`, description: view.tagline || (markdown ? plainExcerpt(markdown) : ''), type: 'project', canonical: canonical(sc, view.url), image: view.logo.startsWith('/') ? view.logo : '' },
+        heading: view.name,
+        project: view,
+        content_html: rendered?.html ?? '',
+        posts: related.items.map(toCard),
+        posts_total: related.total,
+        tag_url: tag && related.total > related.items.length ? tag.url : '',
+        crumbs: [{ name: sc.t('nav_projects'), url: '/projects' }],
+        alternate: same(view.url),
+      },
+      200,
+      key,
+    );
   });
 
   // 放在最后：只有不属于系统路由的单段地址才会落到这里

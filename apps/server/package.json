@@ -8,7 +8,7 @@
     "start": "node dist/server.js",
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "tsx --test src/app.test.ts src/app-m2.test.ts src/app-m3.test.ts src/app-m4.test.ts src/app-m5.test.ts src/lib/slug.test.ts",
+    "test": "tsx --test src/app.test.ts src/app-m2.test.ts src/app-m3.test.ts src/app-m4.test.ts src/app-m5.test.ts src/app-showcase.test.ts src/lib/slug.test.ts",
     "db:generate": "drizzle-kit generate"
   },
   "devDependencies": {

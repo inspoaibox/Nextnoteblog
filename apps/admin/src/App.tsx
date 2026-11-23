@@ -14,6 +14,8 @@ import { Tags } from './pages/Tags';
 import { Collections } from './pages/Collections';
 import { Pages, PageEditor } from './pages/Pages';
 import { Nav } from './pages/Nav';
+import { Links } from './pages/Links';
+import { Projects } from './pages/Projects';
 import { Languages } from './pages/Languages';
 import { Themes } from './pages/Themes';
 import { Tools } from './pages/Tools';
@@ -149,6 +151,8 @@ function Shell() {
           <span className="nav-group">内容</span>
           <NavLink to="/posts">文章</NavLink>
           <NavLink to="/pages">页面</NavLink>
+          <NavLink to="/projects">开源项目</NavLink>
+          <NavLink to="/links">友链</NavLink>
           <NavLink to="/media">媒体库</NavLink>
           <span className="nav-group">组织</span>
           <NavLink to="/categories">分类</NavLink>
@@ -180,6 +184,8 @@ function Shell() {
           <Route path="/posts" element={<Posts onNew={newPost} />} />
           <Route path="/media" element={<Media />} />
           <Route path="/pages" element={<Pages />} />
+          <Route path="/projects" element={<Projects />} />
+          <Route path="/links" element={<Links />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/tags" element={<Tags />} />
           <Route path="/collections" element={<Collections />} />

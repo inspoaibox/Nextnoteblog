@@ -1,0 +1,27 @@
+{% comment %}
+  友链。参数：heading、intro_html（后台填写的说明，已渲染为 HTML）、link_groups（[{ name, links: [{ name, url, description, avatar, initial }] }]）
+{% endcomment %}
+<div class="frame">
+  {% unless embedded %}<header class="list-header">
+    <h1>{{ heading }}</h1>
+  </header>{% endunless %}
+  {% if link_groups.size == 0 %}
+    <div class="empty"><p class="empty-title">{{ 'links_empty' | t }}</p></div>
+  {% endif %}
+  {% for group in link_groups %}
+  <section class="link-group">
+    {% if group.name != "" %}<h2 class="link-group-name">{{ group.name }}</h2>{% endif %}
+    <ul class="link-grid">
+      {% for link in group.links %}
+      <li class="link-card">
+        <a href="{{ link.url }}" target="_blank" rel="noopener">
+          <span class="link-avatar" aria-hidden="true">{% if link.avatar != "" %}<img src="{{ link.avatar }}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">{% else %}{{ link.initial }}{% endif %}</span>
+          <span class="link-text"><strong>{{ link.name }}</strong>{% if link.description != "" %}<small>{{ link.description }}</small>{% endif %}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+  {% if intro_html != "" %}<div class="post-content showcase-intro">{{ intro_html | raw }}</div>{% endif %}
+</div>

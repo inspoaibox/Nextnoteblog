@@ -19,14 +19,14 @@
       {% for p in posts %}{% unless p.pinned %}{% assign lead = p %}{% break %}{% endunless %}{% endfor %}
     {% endif %}
     {% if lead %}
-    <article class="alead">
-      <a class="alead-cover" href="{{ lead.url }}" tabindex="-1" aria-hidden="true">{% if lead.cover != "" %}<img src="{{ lead.cover }}" alt="" decoding="async">{% else %}<span class="acard-glyph">{{ lead.title | slice: 0, 1 }}</span>{% endif %}</a>
+    <article class="alead{% if lead.cover != "" %} has-cover{% endif %}">
       <div class="alead-body">
-        <p class="acard-meta"><time datetime="{{ lead.date | date_iso }}">{{ lead.date | date_fmt }}</time></p>
+        <p class="alead-meta"><span>{{ 'latest' | t }}</span><time datetime="{{ lead.date | date_iso }}">{{ lead.date | date_fmt }}</time></p>
         <h2 class="alead-title"><a href="{{ lead.url }}">{{ lead.title }}</a></h2>
         {% if lead.excerpt != "" %}<p class="alead-excerpt">{{ lead.excerpt }}</p>{% endif %}
-        <p class="acard-foot">{{ lead.reading_minutes }} {{ 'minutes' | t }}</p>
+        <p class="alead-foot">{{ lead.reading_minutes }} {{ 'minutes' | t }}{% if lead.views > 0 %}<span>{{ lead.views | num }} {{ 'views' | t }}</span>{% endif %}</p>
       </div>
+      {% if lead.cover != "" %}<a class="alead-cover" href="{{ lead.url }}" tabindex="-1" aria-hidden="true"><img src="{{ lead.cover }}" alt="" decoding="async"></a>{% endif %}
     </article>
     {% endif %}
 

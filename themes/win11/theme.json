@@ -1,0 +1,53 @@
+{
+  "id": "win11",
+  "name": "Windows 11 风格",
+  "version": "1.0.0",
+  "author": "nexemcblog",
+  "description": "把整个站点做成一台 Windows 11 风格的桌面：居中的任务栏与开始菜单，圆角云母窗口里的文件资源管理器，窗口可拖动、最小化、最大化与关闭。支持浅色与深色。",
+  "requires": ">=1.0.0",
+  "settings": [
+    {
+      "key": "accent",
+      "type": "color",
+      "label": "强调色",
+      "hint": "链接、按钮与当前导航的指示条",
+      "default": "#0067c0"
+    },
+    {
+      "key": "wallpaper",
+      "type": "select",
+      "label": "桌面壁纸",
+      "default": "bloom",
+      "options": [
+        {
+          "value": "bloom",
+          "label": "蓝色花瓣"
+        },
+        {
+          "value": "glow",
+          "label": "暮光"
+        },
+        {
+          "value": "flow",
+          "label": "青绿流光"
+        }
+      ]
+    },
+    {
+      "key": "taskbar",
+      "type": "select",
+      "label": "任务栏对齐",
+      "default": "center",
+      "options": [
+        {
+          "value": "center",
+          "label": "居中"
+        },
+        {
+          "value": "left",
+          "label": "靠左"
+        }
+      ]
+    }
+  ]
+}

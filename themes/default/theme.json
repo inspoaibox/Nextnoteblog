@@ -1,7 +1,7 @@
 {
   "id": "default",
   "name": "极简阅读",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "nexemcblog",
   "description": "以正文阅读为中心：标题悬挂 # 记号，荧光笔强调，首页是按年份排的文章索引。",
   "requires": ">=1.0.0",

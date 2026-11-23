@@ -12,6 +12,8 @@ import { defaultLocaleSync } from '../services/i18n.ts';
 /** 主题规范的版本：主题在 theme.json 的 requires 里声明自己需要的最低版本 */
 export const ENGINE_VERSION = '1.0.0';
 export const REQUIRED_TEMPLATES = ['layout', 'home', 'post-list', 'post', 'category', 'tags', 'collection', 'archive', 'search', 'page', '404'];
+/** 可选模板：主题没有时，内容用默认主题的同名片段渲染，再套进本主题的 page 模板 */
+export const OPTIONAL_TEMPLATES = ['links', 'projects', 'project'];
 export const THEME_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,39}$/;
 
 export interface ThemeSetting {
@@ -60,6 +62,8 @@ function lookup(locales: Record<string, Record<string, string>>, locale: string,
 /** 服务端代码里取主题文案（页面标题等），规则与模板里的 t 过滤器一致 */
 export function translate(themeId: string, locale: string, key: string, overrides: Record<string, string> = {}, vars: Record<string, string | number> = {}): string {
   let text = overrides[key] ?? lookup(loadTheme(themeId).locales, locale, key);
+  // 较早做的主题可能没有后来新增的文案（例如友链、开源项目）：用内置默认主题的文案补上
+  if (text === key && themeId !== 'default') text = lookup(loadTheme('default').locales, locale, key);
   for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));
   return text;
 }
@@ -111,7 +115,10 @@ export function buildTheme(dir: string): LoadedTheme {
   // 文案查找顺序：后台覆盖 → 主题当前语言 → 主题默认语言 → 主题 zh-CN → 键名本身
   liquid.registerFilter('t', function (this: any, key: string) {
     const overrides = (this.context.getSync(['_ui']) ?? {}) as Record<string, string>;
-    return overrides[key] ?? lookup(locales, ctx(this, ['site', 'locale'], 'zh-CN'), key);
+    const locale = ctx(this, ['site', 'locale'], 'zh-CN');
+    const text = overrides[key] ?? lookup(locales, locale, key);
+    // 主题缺少某条文案（多半是系统后来新增的）：用内置默认主题的补上，而不是把键名显示给访客
+    return text === key && manifest.id !== 'default' ? lookup(loadTheme('default').locales, locale, key) : text;
   });
   // 站内地址加上当前语言的前缀：{{ '/posts' | url }}
   liquid.registerFilter('url', function (this: any, p: string) {
@@ -179,6 +186,12 @@ export async function renderWith(theme: LoadedTheme, template: string, context: 
 
 export function renderPage(themeId: string, template: string, context: Record<string, unknown>, opts: { version?: string; config?: Record<string, unknown> } = {}): Promise<string> {
   return renderWith(loadTheme(themeId, opts.version), template, context, opts.config);
+}
+
+/** 主题是否提供某个模板。友链、开源项目等后来新增的页面是可选模板，没有时系统用通用方式渲染 */
+export function themeHasTemplate(id: string, name: string, version?: string): boolean {
+  const where = resolver(id, version);
+  return !!where && fs.existsSync(path.join(where.dir, 'templates', `${name}.liquid`));
 }
 
 /** 主题静态资源目录（只暴露 assets/，模板与配置不可下载） */

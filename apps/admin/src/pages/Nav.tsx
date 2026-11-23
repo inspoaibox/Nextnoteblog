@@ -16,7 +16,7 @@ interface NavItem {
   defaultLabel?: string;
 }
 
-const TYPE_LABEL: Record<string, string> = { home: '首页', posts: '文章列表', archive: '归档', category: '分类', tag: '标签', collection: '专题 / 系列', page: '页面', url: '自定义链接' };
+const TYPE_LABEL: Record<string, string> = { home: '首页', posts: '文章列表', archive: '归档', projects: '开源项目', links: '友链', category: '分类', tag: '标签', collection: '专题 / 系列', page: '页面', url: '自定义链接' };
 
 export function Nav() {
   const [menu, setMenu] = useState<'header' | 'footer'>('header');
@@ -60,7 +60,7 @@ export function Nav() {
 
   const add = () => {
     if (!items) return;
-    const builtin = ['home', 'posts', 'archive'].includes(addType);
+    const builtin = ['home', 'posts', 'archive', 'projects', 'links'].includes(addType);
     if (addType === 'url') {
       if (!/^(https?:\/\/|\/|mailto:)/i.test(addUrl)) return toast('链接需以 http://、https://、/ 或 mailto: 开头', 'error');
       update([...items, { type: 'url', targetId: null, url: addUrl, label: '', newTab: /^https?:/i.test(addUrl), visible: true, resolvedUrl: addUrl, defaultLabel: addUrl }]);

@@ -70,7 +70,7 @@ after(async () => {
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
 
-const BUILTIN = ['aurora', 'default', 'docs', 'magazine', 'riso', 'zine'];
+const BUILTIN = ['aurora', 'default', 'macos', 'magazine', 'win11', 'win7'];
 
 test('主题库：六套内置主题，默认主题生效；访客页面没有任何主题切换控件', async () => {
   const lib = (await api('GET', '/themes')).body;
@@ -85,14 +85,15 @@ test('主题库：六套内置主题，默认主题生效；访客页面没有�
 });
 
 test('切换内置主题：全站统一生效，内容与地址不变；可一键回退', async () => {
-  assert.equal((await api('POST', '/themes/docs/activate')).status, 200);
+  assert.equal((await api('POST', '/themes/win7/activate')).status, 200);
   const home = (await page('/')).body;
-  assert.match(home, /class="shell"/, '技术文档主题的布局');
-  assert.match(home, /\/theme\/docs\//);
+  assert.match(home, /class="desktop"/, '桌面风格主题的布局');
+  assert.match(home, /class="taskbar"/);
+  assert.match(home, /\/theme\/win7\//);
   const post = await page('/posts/hello-theme');
   assert.equal(post.statusCode, 200);
   assert.match(post.body, /正文内容/);
-  assert.match(post.body, /class="side"/, '文章页也是同一套主题');
+  assert.match(post.body, /data-win/, '文章页也是同一套主题');
 
   await api('POST', '/themes/magazine/activate');
   assert.match((await page('/')).body, /class="masthead-bar"/);
@@ -100,13 +101,13 @@ test('切换内置主题：全站统一生效，内容与地址不变；可一�
   assert.equal((await page('/no-such')).statusCode, 404);
 
   const rolled = await api('POST', '/themes/rollback');
-  assert.equal(rolled.body.active, 'docs', '回退到上一个主题');
+  assert.equal(rolled.body.active, 'win7', '回退到上一个主题');
   await api('POST', '/themes/default/activate');
-  assert.equal((await api('GET', '/themes')).body.previous, 'docs');
+  assert.equal((await api('GET', '/themes')).body.previous, 'win7');
   assert.equal((await api('POST', '/themes/nope/activate')).status, 404);
 });
 
-test('视觉主题：孔版印刷、极光、拼贴都能启用，明暗固定，配置项生效，文章内容不变', async () => {
+test('视觉主题：极光与三个桌面风格主题都能启用，明暗固定，配置项生效，文章内容不变', async () => {
   // 首页不再重复显示站名：页头一个，正文里只有给读屏软件的隐藏标题
   for (const id of BUILTIN) {
     await api('POST', `/themes/${id}/activate`);
@@ -116,16 +117,17 @@ test('视觉主题：孔版印刷、极光、拼贴都能启用，明暗固定�
     assert.doesNotMatch(home, /class="(masthead|rmast|ahero|zmast)"/, `${id} 没填标语和介绍时不显示标语区`);
   }
   await api('PUT', '/settings', { tagline: '一句标语' });
-  await api('POST', '/themes/riso/activate');
-  assert.match((await page('/')).body, /class="rmast-tagline">一句标语</, '填了标语才显示');
+  await api('POST', '/themes/default/activate');
+  assert.match((await page('/')).body, /class="masthead-tagline">一句标语</, '填了标语才显示');
   await api('PUT', '/settings', { tagline: '' });
 
   // 管理员把外观设成深色：始终浅色的主题不能被带成深色
   await api('PUT', '/settings', { appearance: 'dark' });
   const cases: [string, RegExp, string][] = [
-    ['riso', /class="site-header rhead"/, 'light'],
+    ['win7', /class="taskbar"/, 'light'],
     ['aurora', /class="sky"/, 'dark'],
-    ['zine', /class="ticker"/, 'light'],
+    ['macos', /class="dock"/, 'dark'],
+    ['win11', /class="start-panel"/, 'dark'],
   ];
   for (const [id, marker, mode] of cases) {
     assert.equal((await api('POST', `/themes/${id}/activate`)).status, 200, `${id} 可以启用`);
@@ -139,23 +141,33 @@ test('视觉主题：孔版印刷、极光、拼贴都能启用，明暗固定�
     assert.equal((await page(`/theme/${id}/1.0.0/style.css`)).statusCode, 200);
   }
 
-  // 配置项：拼贴的背景色、关闭滚动字幕；极光换配色、关闭流动；孔版印刷关闭颗粒
-  await api('PUT', '/themes/zine/config', { values: { bg: '#00aa55', ticker: false } });
-  await api('POST', '/themes/zine/config/apply');
-  await api('POST', '/themes/zine/activate');
+  // 配置项：Win11 的强调色与任务栏对齐；极光换配色、关闭流动；macOS 的强调色与关闭图标放大
+  await api('PUT', '/themes/win11/config', { values: { accent: '#aa5500', taskbar: 'left' } });
+  await api('POST', '/themes/win11/config/apply');
+  await api('POST', '/themes/win11/activate');
   let html = (await page('/')).body;
-  assert.match(html, /--bg: #00aa55/);
-  assert.doesNotMatch(html, /class="ticker"/);
+  assert.match(html, /--accent-base: #aa5500/);
+  assert.match(html, / bar-left/);
   await api('PUT', '/themes/aurora/config', { values: { palette: 'sunset', motion: false } });
   await api('POST', '/themes/aurora/config/apply');
   await api('POST', '/themes/aurora/activate');
   html = (await page('/')).body;
   assert.match(html, /palette-sunset/);
   assert.match(html, / still/);
-  await api('PUT', '/themes/riso/config', { values: { grain: false, duotone: false } });
-  await api('POST', '/themes/riso/config/apply');
-  await api('POST', '/themes/riso/activate');
-  assert.doesNotMatch((await page('/')).body, /<body class="page-home[^"]*grain/);
+  await api('PUT', '/themes/macos/config', { values: { accent: 'green', magnify: false } });
+  await api('POST', '/themes/macos/config/apply');
+  await api('POST', '/themes/macos/activate');
+  html = (await page('/')).body;
+  assert.match(html, / accent-green/);
+  assert.doesNotMatch(html, /<body class="[^"]*magnify/);
+  // 桌面风格主题：文章列表是文件列表，窗口带可操作的按钮；不开脚本时内容也在页面里
+  assert.match(html, /<template data-shell>/, '首页是桌面，不自动打开窗口');
+  assert.match(html, /class="ico page/, '首页的文章是桌面图标');
+  const list = (await page('/posts')).body;
+  assert.match(list, /class="files"/);
+  assert.match(list, /data-act="close"/);
+  assert.doesNotMatch(list, /<template data-shell>/);
+  assert.match((await page('/posts/hello-theme')).body, /<main id="main">[\s\S]*正文内容/);
 
   await api('PUT', '/settings', { appearance: 'auto' });
   await api('POST', '/themes/default/activate');
@@ -184,6 +196,12 @@ test('主题配置：草稿不影响线上，预览可见，应用后生效，�
   const live = (await page('/')).body;
   assert.match(live, /--marker: #00ff88/);
   assert.match(live, /no-hash/);
+  // 草稿应用之后，预览的内容与线上完全一致：即使预览 Cookie 还在，也不再显示“仅你可见”的提示
+  assert.doesNotMatch((await page('/', previewCookie)).body, /正在预览主题/);
+  // 启用主题会顺带退出预览
+  const activated = await api('POST', '/themes/magazine/activate');
+  assert.match(activated.setCookie, /nb_theme_preview=;/, '启用后清除预览 Cookie');
+  await api('POST', '/themes/default/activate');
   assert.match((await api('POST', '/themes/default/config/revert')).body.config.applied.marker, /#ffe14d/);
   assert.doesNotMatch((await page('/')).body, /#00ff88/);
   await api('POST', '/themes/default/config/revert');
@@ -305,7 +323,7 @@ test('主题损坏时自动用默认主题兜底，站点保持可访问', async
 test('卸载：使用中的主题不能卸载；切走后可以卸载，文件与状态一并清除', async () => {
   await api('POST', '/themes/paper/activate');
   assert.equal((await api('DELETE', '/themes/paper')).status, 400);
-  assert.equal((await api('DELETE', '/themes/docs')).status, 400, '内置主题不能卸载');
+  assert.equal((await api('DELETE', '/themes/win7')).status, 400, '内置主题不能卸载');
 
   assert.equal((await api('POST', '/themes/rollback')).body.active, 'default');
   assert.equal((await api('DELETE', '/themes/paper/versions/1.1.0')).status, 200);

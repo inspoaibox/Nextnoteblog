@@ -42,14 +42,17 @@ export async function adminThemeRoutes(app: FastifyInstance) {
 
   /* ---------- 切换与回退 ---------- */
 
-  app.post('/themes/:id/activate', async (req) => {
+  // 启用或回退之后线上已经换了主题，之前的预览没有意义了：一并退出，免得前台还挂着“仅你可见”的提示
+  app.post('/themes/:id/activate', async (req, reply) => {
     await themes.activateTheme(idOf(req), req.user!.id);
+    reply.clearCookie(PREVIEW_COOKIE, { path: '/' });
     await audit(req, 'theme_activate', idOf(req));
     return { ok: true };
   });
 
-  app.post('/themes/rollback', async (req) => {
+  app.post('/themes/rollback', async (req, reply) => {
     const target = await themes.rollbackTheme(req.user!.id);
+    reply.clearCookie(PREVIEW_COOKIE, { path: '/' });
     await audit(req, 'theme_rollback', target);
     return { active: target };
   });

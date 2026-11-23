@@ -28,9 +28,12 @@ const ANCHOR_RESET = `
 }
 `;
 
-for (const file of fs.readdirSync(path.join(themes, '_src')).filter((f) => f.endsWith('.css'))) {
+for (const file of fs.readdirSync(path.join(themes, '_src')).filter((f) => f.endsWith('.css') && !f.startsWith('_'))) {
   const id = path.basename(file, '.css');
-  const own = fs.readFileSync(path.join(themes, '_src', file), 'utf8');
+  // 以下划线开头的文件是片段，用 /* @include _xxx.css */ 引入（三个桌面系统风格的主题共用窗口骨架）
+  const own = fs.readFileSync(path.join(themes, '_src', file), 'utf8').replace(/\/\* @include (_[\w-]+\.css) \*\//g, (_m, name) => fs.readFileSync(path.join(themes, '_src', name), 'utf8').trim());
+  // 桌面系统风格的主题共用一份窗口管理脚本
+  if (own.includes('/* desktop-shell */')) fs.copyFileSync(path.join(themes, '_src', '_desktop.js'), path.join(themes, id, 'assets', 'main.js'));
   const out = `${base.trimEnd()}\n${ANCHOR_RESET}\n${own.trim()}\n`;
   fs.writeFileSync(path.join(themes, id, 'assets', 'style.css'), out);
   console.log(`${id}: ${out.split('\n').length} 行`);

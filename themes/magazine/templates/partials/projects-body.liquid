@@ -1,0 +1,34 @@
+{% comment %}
+  开源项目列表。参数：heading、intro_html、projects（字段见 docs/theme-development.md）
+{% endcomment %}
+<div class="frame">
+  {% unless embedded %}<header class="list-header">
+    <h1>{{ heading }}</h1>
+    {% if projects.size > 0 %}<p>{{ 'project_count' | t | replace: '{n}', projects.size }}</p>{% endif %}
+  </header>{% endunless %}
+  {% if intro_html != "" %}<div class="post-content showcase-intro is-top">{{ intro_html | raw }}</div>{% endif %}
+  {% if projects.size == 0 %}
+    <div class="empty"><p class="empty-title">{{ 'projects_empty' | t }}</p></div>
+  {% else %}
+  <ul class="project-grid">
+    {% for p in projects %}
+    <li class="project-card{% if p.featured %} is-featured{% endif %}">
+      <div class="project-head">
+        <span class="project-logo" aria-hidden="true">{% if p.logo != "" %}<img src="{{ p.logo }}" alt="" loading="lazy" decoding="async">{% else %}{{ p.initial }}{% endif %}</span>
+        <div class="project-id">
+          <h2 class="project-name"><a href="{{ p.url }}">{{ p.name }}</a></h2>
+          <p class="project-sub">{% if p.version != "" %}<span class="project-version">{{ p.version }}</span>{% endif %}<span class="project-status status-{{ p.status }}">{{ p.status_key | t }}</span></p>
+        </div>
+      </div>
+      {% if p.tagline != "" %}<p class="project-tagline">{{ p.tagline }}</p>{% endif %}
+      <p class="project-meta">
+        {% if p.language != "" %}<span class="project-lang">{{ p.language }}</span>{% endif %}
+        {% if p.stars > 0 %}<span title="{{ 'project_stars' | t }}">★ {{ p.stars | num }}</span>{% endif %}
+        {% if p.forks > 0 %}<span title="{{ 'project_forks' | t }}">⑂ {{ p.forks | num }}</span>{% endif %}
+        {% if p.license != "" %}<span>{{ p.license }}</span>{% endif %}
+      </p>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>

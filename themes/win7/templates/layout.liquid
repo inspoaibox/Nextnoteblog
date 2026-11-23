@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="{{ site.locale }}" data-mode="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title }}</title>
+  {% if page.description and page.description != "" %}<meta name="description" content="{{ page.description }}">{% endif %}
+  {% if page.noindex %}<meta name="robots" content="noindex">{% endif %}
+  {% if page.canonical and page.canonical != "" %}<link rel="canonical" href="{{ page.canonical }}">{% endif %}
+  <meta property="og:site_name" content="{{ site.name }}">
+  <meta property="og:title" content="{{ page.title }}">
+  <meta property="og:type" content="{% if page.type == 'post' %}article{% else %}website{% endif %}">
+  {% if page.description and page.description != "" %}<meta property="og:description" content="{{ page.description }}">{% endif %}
+  {% if page.image and page.image != "" %}<meta property="og:image" content="{{ site.url }}{{ page.image }}">{% endif %}
+  {% if page.canonical and page.canonical != "" %}<meta property="og:url" content="{{ page.canonical }}">{% endif %}
+  <meta name="twitter:card" content="{% if page.image and page.image != "" %}summary_large_image{% else %}summary{% endif %}">
+  {% if page.jsonld and page.jsonld != "" %}<script type="application/ld+json">{{ page.jsonld | raw }}</script>{% endif %}
+  <meta name="color-scheme" content="light">
+  {% for alt in hreflang %}<link rel="alternate" hreflang="{{ alt.code }}" href="{{ alt.href }}">
+  {% endfor %}<link rel="alternate" type="application/atom+xml" title="{{ site.name }}" href="{{ site.feed_url }}">
+  <link rel="stylesheet" href="{{ 'style.css' | asset_url }}">
+</head>
+<body class="os page-{{ page.type }} tint-{{ theme.config.tint }}" data-locale="{{ site.locale }}" data-home="{{ '/' | url }}" data-site="{{ site.name }}" data-t-copied="{{ 'copied' | t }}" data-t-expand="{{ 'expand_code' | t }}" data-t-image="{{ 'image' | t }}">
+  <a class="skip-link" href="#main">{{ 'skip_to_content' | t }}</a>
+  {% if languages.size > 1 %}
+  <div class="lang-hint" data-text="{{ 'lang_suggest' | t }}" hidden>
+    <span class="lang-hint-text"></span>
+    <a class="lang-hint-go" href="#">{{ 'lang_suggest_go' | t }}</a>
+    <button class="lang-hint-close" type="button">{{ 'lang_suggest_dismiss' | t }}</button>
+  </div>
+  {% endif %}
+  <div class="desk" aria-hidden="true"></div>
+
+  {% comment %} 桌面：图标是主导航和分类文件夹；窗口是一个资源管理器 {% endcomment %}
+  <div class="desktop" id="desktop">
+    <nav class="icons"{% if page.type == 'home' %} id="main"{% endif %} aria-label="{{ 'categories' | t }}">
+      {% for item in nav.header %}<a class="icon" href="{{ item.url }}" data-launch{% if item.new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}><span class="ico app t{{ forloop.index0 | modulo: 7 }}" aria-hidden="true">{{ item.label | slice: 0, 1 }}</span><span class="icon-name">{{ item.label }}</span></a>
+      {% endfor %}{% for cat in site.categories %}<a class="icon" href="{{ cat.url }}" data-launch><span class="ico folder" aria-hidden="true"></span><span class="icon-name">{{ cat.name }}</span></a>
+      {% endfor %}
+    {% if page.type == 'home' %}{% block content %}{% endblock %}{% endif %}
+    </nav>
+    {% comment %} 首页就是桌面本身，不自动打开窗口；窗口外壳放在 template 里供脚本复制 {% endcomment %}
+    {% if page.type == 'home' %}<template data-shell>{% endif %}<section class="win is-active" data-win aria-label="{{ page.title }}">
+      <header class="win-bar" data-drag>
+        <span class="win-title" data-title>{{ page.title }}</span>
+        <span class="win-ctl"><button type="button" class="c-min" data-act="min" aria-label="{{ 'win_min' | t }}" title="{{ 'win_min' | t }}"></button><button type="button" class="c-max" data-act="max" aria-label="{{ 'win_max' | t }}" title="{{ 'win_max' | t }}"></button><button type="button" class="c-close" data-act="close" aria-label="{{ 'win_close' | t }}" title="{{ 'win_close' | t }}"></button></span>
+      </header>
+      <div class="win-tools">
+        <span class="navs"><button type="button" class="n-back" data-act="back" aria-label="{{ 'go_back' | t }}" title="{{ 'go_back' | t }}" disabled></button><button type="button" class="n-fwd" data-act="forward" aria-label="{{ 'go_forward' | t }}" title="{{ 'go_forward' | t }}" disabled></button></span>
+        <nav class="addr" data-addr aria-label="{{ 'breadcrumb' | t }}"><a href="{{ '/' | url }}">{{ site.name }}</a>{% for crumb in crumbs %}<a href="{{ crumb.url }}">{{ crumb.name }}</a>{% endfor %}</nav>
+        <form class="site-search" action="{{ '/search' | url }}" method="get" role="search">
+          <input type="search" name="q" value="{{ query }}" placeholder="{{ 'search_placeholder' | t }}" aria-label="{{ 'search' | t }}" autocomplete="off">
+        </form>
+      </div>
+      <div class="win-body">
+        <aside class="pane">
+          <p class="pane-h">{{ site.name }}</p>
+          <ul class="pane-list">
+            <li><a href="{{ '/posts' | url }}"><i class="mini doc"></i>{{ 'all_posts' | t }}</a></li>
+          </ul>
+          {% if site.categories.size > 0 %}
+          <p class="pane-h">{{ 'categories' | t }}</p>
+          <ul class="pane-list">
+            {% for cat in site.categories %}<li><a href="{{ cat.url }}"><i class="mini folder"></i>{{ cat.name }}</a>{% if cat.children.size > 0 %}<ul>{% for child in cat.children %}<li><a href="{{ child.url }}">{{ child.name }}</a></li>{% endfor %}</ul>{% endif %}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </aside>
+        <div class="view" data-view>
+          <main id="main">
+            {% unless page.type == 'home' %}{% block content %}{% endblock %}{% endunless %}
+          </main>
+        </div>
+      </div>
+      <footer class="win-status">
+        <span>© {{ site.year }} {{ site.name }}</span>
+        {% if site.footer_text and site.footer_text != "" %}<span>{{ site.footer_text }}</span>{% endif %}
+        {% if site.icp and site.icp != "" %}<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ site.icp }}</a>{% endif %}
+        <nav class="status-nav" aria-label="{{ 'footer_nav' | t }}">
+          {% for item in nav.footer %}<a href="{{ item.url }}"{% if item.new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.label }}</a>{% endfor %}
+          <a href="{{ site.feed_url }}">{{ 'subscribe' | t }}</a>
+        </nav>
+      </footer>
+    </section>{% if page.type == 'home' %}</template>{% endif %}
+  </div>
+
+  {% comment %} 任务栏：开始菜单、打开的窗口、语言栏与时钟 {% endcomment %}
+  <div class="taskbar">
+    <details class="startmenu" data-menu>
+      <summary class="start" aria-label="{{ 'start' | t }}" title="{{ 'start' | t }}"><span aria-hidden="true">{{ site.name | slice: 0, 1 }}</span></summary>
+      <div class="start-panel">
+        <div class="start-left">
+          <nav class="start-apps" aria-label="{{ 'main_nav' | t }}">
+            {% for item in nav.header %}<a href="{{ item.url }}"{% if item.current %} aria-current="page"{% endif %}{% if item.new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}><span class="ico app t{{ forloop.index0 | modulo: 7 }}" aria-hidden="true">{{ item.label | slice: 0, 1 }}</span>{{ item.label }}</a>{% endfor %}
+          </nav>
+          <form class="site-search start-search" action="{{ '/search' | url }}" method="get" role="search">
+          <input type="search" name="q" value="{{ query }}" placeholder="{{ 'search_placeholder' | t }}" aria-label="{{ 'search' | t }}" autocomplete="off">
+        </form>
+        </div>
+        <div class="start-right">
+          <a class="start-user" href="{{ '/' | url }}">{{ site.name }}</a>
+          <a href="{{ '/posts' | url }}">{{ 'all_posts' | t }}</a>
+          {% for cat in site.categories %}<a href="{{ cat.url }}">{{ cat.name }}</a>{% endfor %}
+          <hr>
+          {% for item in nav.footer %}<a href="{{ item.url }}"{% if item.new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.label }}</a>{% endfor %}<a href="{{ site.feed_url }}">{{ 'subscribe' | t }}</a>
+        </div>
+      </div>
+    </details>
+    <div class="tasks" data-tasks></div>
+    <div class="tray">
+      {% if languages.size > 1 %}
+      <nav class="lang-switch" aria-label="{{ 'language' | t }}">
+        {% for lang in languages %}{% if lang.current %}<span aria-current="true" lang="{{ lang.code }}">{{ lang.name }}</span>{% else %}<a href="{{ lang.href }}" hreflang="{{ lang.code }}" lang="{{ lang.code }}" data-lang="{{ lang.code }}"{% unless lang.available %} data-missing title="{{ 'lang_missing' | t }}"{% endunless %}>{{ lang.name }}</a>{% endif %}{% endfor %}
+      </nav>
+      {% endif %}
+      <span class="clock" data-clock aria-hidden="true"><b></b><i></i></span>
+    </div>
+  </div>
+
+  <script src="{{ 'main.js' | asset_url }}" defer></script>
+</body>
+</html>

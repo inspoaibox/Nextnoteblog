@@ -23,6 +23,9 @@ my-theme/
 │  ├─ search.liquid        搜索
 │  ├─ page.liquid          自定义页面
 │  ├─ 404.liquid           页面不存在
+│  ├─ links.liquid         友链（可选）
+│  ├─ projects.liquid      开源项目列表（可选）
+│  ├─ project.liquid       开源项目详情（可选）
 │  └─ partials/            自定义的模板片段（可选，任意命名）
 ├─ assets/                 静态资源，通过 /theme/{id}/{version}/… 访问
 │  ├─ style.css
@@ -32,7 +35,9 @@ my-theme/
    └─ en.json
 ```
 
-上面列出的 11 个模板缺一不可，导入时会逐个检查并用样例数据试渲染。
+除了标“可选”的三个，上面列出的 11 个模板缺一不可，导入时会逐个检查并用样例数据试渲染。
+
+友链与开源项目是后来加入的页面，所以做成可选模板：主题没有提供时，系统用内置默认主题的同名片段（`partials/links-body.liquid` 等）生成正文，套进本主题的 `page` 模板显示，页面不会缺失，只是样式未必协调。想让它们和主题风格一致，就提供这三个模板。主题语言包里缺少的文案（例如 `nav_projects`）同样会用默认主题的补上。
 
 ## theme.json
 
@@ -55,7 +60,7 @@ my-theme/
 
 | 字段 | 要求 |
 |---|---|
-| `id` | 2–40 位小写字母、数字、连字符。不能与内置主题（`default`、`docs`、`magazine`、`riso`、`aurora`、`zine`）相同。同一个 `id` 再次上传视为升级 |
+| `id` | 2–40 位小写字母、数字、连字符。不能与内置主题（`default`、`magazine`、`aurora`、`win7`、`win11`、`macos`）相同。同一个 `id` 再次上传视为升级 |
 | `version` | 三段版本号，如 `1.2.0`。升级时必须提高版本号 |
 | `requires` | 需要的主题规范版本，写成 `>=1.0.0` |
 | `settings` | 管理员可调整的选项，后台据此生成配置表单 |
@@ -136,9 +141,13 @@ Liquid 自带的过滤器和标签（`if`、`for`、`assign`、`capture`、`repl
 | `post` | `post`（卡片字段加 `html`、`toc`、`show_toc`、`archived`、`show_updated`、`categories`、`tags`）、`crumbs`、`series`、`prev`、`next`、`preview` |
 | `page` | `content`（`title`、`html`）、`preview` |
 | `404` | 仅公共变量 |
+| `links`（可选） | `heading`、`intro_html`（后台填写的说明，已是 HTML）、`link_groups`（`name`，没有分组名时为空；`links`：`name`、`url`、`description`、`avatar`、`initial`） |
+| `projects`（可选） | `heading`、`intro_html`、`projects`（见下） |
+| `project`（可选） | `project`、`content_html`（项目介绍，已是 HTML）、`posts`（相关文章卡片）、`posts_total`、`tag_url`（相关文章超过 10 篇时的标签页地址）、`crumbs` |
 
 - `pagination`：`page`、`pages`、`total`、`prev_url`、`next_url`。
 - `crumbs`：`name`、`url`，不含“首页”。
+- 开源项目：`name`、`initial`（名称首字，没有图标时可用）、`tagline`、`url`、`logo`、`repo_url`、`repo_host`（GitHub、Gitee 等）、`homepage`、`docs_url`、`download_url`、`license`、`language`、`status`（`active` / `maintained` / `experimental` / `archived`）、`status_key`（对应文案的键，用 `{{ p.status_key | t }}` 显示）、`featured`、`stars`、`forks`、`version`、`release_url`、`released_at`。
 - `post.toc`：`depth`（2–4）、`id`、`text`。
 - `series`（文章属于某个系列时）：`title`、`url`、`position`、`total`、`chapters`（`title`、`url`、`current`）、`prev`、`next`。
 
@@ -229,7 +238,7 @@ pnpm --filter @nexemc/server exec tsx scripts/seed-demo.ts http://localhost:3200
 
 ## 上线前自查
 
-- [ ] 11 个必需模板齐全，`theme-check` 通过
+- [ ] 11 个必需模板齐全（友链、开源项目三个模板可选），`theme-check` 通过
 - [ ] 手机、平板、桌面三种宽度下没有横向滚动
 - [ ] 长标题、中英文混排、没有封面的文章、没有文章的空状态都看过
 - [ ] 代码块、表格、图片、提示块、任务清单、脚注在亮色和暗色下都能正常阅读

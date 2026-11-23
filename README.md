@@ -7,7 +7,8 @@
 - **M1 内容闭环**（已完成）：安装向导、登录、文章与修订、发布状态机、Markdown 编辑器、图片上传、默认主题。
 - **M2 组织与前台**（已完成）：多级分类树、标签、专题与系列、自定义页面、导航菜单、站内搜索（中文分词）、归档、面包屑，以及文章批量操作。
 - **M3 多语言**（已完成）：语言管理、各语言独立的文章 / 分类 / 标签 / 专题 / 页面 / 导航、语言切换与 hreflang、界面文案翻译、多语言订阅与站点地图。默认语言的地址不带前缀，其他语言带前缀（如 `/en/…`）。
-- **M4 主题系统**（已完成）：六套内置主题（极简阅读、技术文档、杂志卡片，以及视觉风格的孔版印刷、极光、拼贴），后台切换与回退、管理员预览、主题配置、ZIP 导入校验、版本升级与回滚、信任分级。自己做主题见 [docs/theme-development.md](docs/theme-development.md)。
+- **M4 主题系统**（已完成）：六套内置主题（极简阅读、杂志卡片、极光，以及把整站做成一台桌面的 Windows 7、Windows 11、macOS 三种系统风格），后台切换与回退、管理员预览、主题配置、ZIP 导入校验、版本升级与回滚、信任分级。自己做主题见 [docs/theme-development.md](docs/theme-development.md)。
+- **开源项目与友链**：开源项目列表与项目介绍页（可从 GitHub 同步星标、派生数、许可证与最新版本，可关联一个标签展示发布说明等相关文章）、分组友链；安装后自带“关于”页面和完整的顶部导航。
 - **M5 导入导出与运维**（已完成）：Markdown 导入（Front Matter、冲突检测、相对路径图片）、单篇 / 分类 / 全站导出、备份与恢复（每日自动备份）、重定向管理、操作日志、结构化数据，以及 systemd 部署方式。
 
 ## 目录结构
@@ -16,7 +17,7 @@
 apps/server        服务端（Fastify + SQLite + Liquid 主题引擎）
 apps/admin         管理后台（React + CodeMirror 6）
 packages/markdown  Markdown 渲染管线，服务端与后台预览共用
-themes/            内置主题：default 极简阅读、docs 技术文档、magazine 杂志卡片、riso 孔版印刷、aurora 极光、zine 拼贴
+themes/            内置主题：default 极简阅读、magazine 杂志卡片、aurora 极光、win7 / win11 / macos 桌面系统风格
 examples/          示例主题（做自己主题的起点）
 docs/              主题开发说明、部署与运维说明
 deploy/            Caddy 配置
@@ -49,7 +50,7 @@ pnpm --filter @nexemc/server exec tsx src/server.ts --port=3200 --data-dir=../..
 pnpm --filter @nexemc/server exec tsx scripts/seed-demo.ts http://localhost:3200
 ```
 
-内置主题的样式由“公共基础 + 各主题专属样式”合成：改了 `themes/default/assets/style.css`（公共基础）或 `themes/_src/*.css`（各主题专属）之后，运行 `node scripts/build-themes.mjs` 重新生成。
+内置主题的样式由“公共基础 + 各主题专属样式”合成：改了 `themes/default/assets/style.css`（公共基础）或 `themes/_src/*.css`（各主题专属）之后，运行 `node scripts/build-themes.mjs` 重新生成。三个桌面系统风格的主题还共用 `themes/_src/_desktop.css`（桌面与窗口骨架）和 `themes/_src/_desktop.js`（窗口管理脚本，生成为各主题的 `assets/main.js`）。
 
 修改 `apps/server/src/db/schema.ts` 后执行 `pnpm --filter @nexemc/server db:generate` 生成迁移文件；服务启动时会自动执行迁移。
 
@@ -76,6 +77,7 @@ docker compose up -d --build
 | `DATA_DIR` | `./data` | 数据目录 |
 | `NODE_ENV` | — | 设为 `production` 时启用模板与静态资源缓存 |
 | `AUTO_BACKUP` | 开启 | 设为 `0` 关闭每日自动备份 |
+| `GITHUB_TOKEN` | — | 可选。同步开源项目数据时使用，提高 GitHub 接口的请求额度 |
 
 ## 运维命令
 

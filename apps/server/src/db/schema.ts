@@ -375,3 +375,75 @@ export const themeLog = sqliteTable(
   },
   (t) => [index('theme_log_created').on(t.createdAt)],
 );
+
+/* ---------- 友链 ---------- */
+
+/** 友链：对方站点的名称与地址本身不随语言变化，所以不做翻译表 */
+export const links = sqliteTable(
+  'links',
+  {
+    id: id(),
+    name: text('name').notNull(),
+    url: text('url').notNull(),
+    description: text('description').notNull().default(''),
+    /** 头像 / 站标图片地址，可留空（前台用名称首字代替） */
+    avatar: text('avatar').notNull().default(''),
+    /** 分组名，留空归入默认组 */
+    groupName: text('group_name').notNull().default(''),
+    sort: integer('sort').notNull().default(0),
+    visible: integer('visible').notNull().default(1),
+    createdAt: ts('created_at').notNull(),
+  },
+  (t) => [index('links_sort').on(t.sort)],
+);
+
+/* ---------- 开源项目 ---------- */
+
+/** 开源项目：地址标识与仓库信息各语言共用；名称、一句话介绍、正文按语言存放 */
+export const projects = sqliteTable(
+  'projects',
+  {
+    id: id(),
+    slug: text('slug').notNull(),
+    repoUrl: text('repo_url').notNull().default(''),
+    homepage: text('homepage').notNull().default(''),
+    docsUrl: text('docs_url').notNull().default(''),
+    downloadUrl: text('download_url').notNull().default(''),
+    license: text('license').notNull().default(''),
+    language: text('language').notNull().default(''),
+    logo: text('logo').notNull().default(''),
+    /** active 活跃开发 | maintained 维护中 | experimental 实验性 | archived 已归档 */
+    status: text('status').notNull().default('active'),
+    featured: integer('featured').notNull().default(0),
+    sort: integer('sort').notNull().default(0),
+    visible: integer('visible').notNull().default(1),
+    /** 相关文章：带这个标签的文章显示在项目页（发布说明、教程等） */
+    tagId: integer('tag_id').references(() => tags.id, { onDelete: 'set null' }),
+    /** 以下来自 GitHub 同步，也可以手填 */
+    stars: integer('stars').notNull().default(0),
+    forks: integer('forks').notNull().default(0),
+    latestVersion: text('latest_version').notNull().default(''),
+    releaseUrl: text('release_url').notNull().default(''),
+    releasedAt: ts('released_at'),
+    syncedAt: ts('synced_at'),
+    syncError: text('sync_error').notNull().default(''),
+    createdAt: ts('created_at').notNull(),
+    updatedAt: ts('updated_at').notNull(),
+  },
+  (t) => [uniqueIndex('projects_slug').on(t.slug), index('projects_sort').on(t.featured, t.sort)],
+);
+
+export const projectTranslations = sqliteTable(
+  'project_translations',
+  {
+    id: id(),
+    projectId: integer('project_id')
+      .notNull()
+      .references(() => projects.id, { onDelete: 'cascade' }),
+    locale: text('locale').notNull(),
+    name: text('name').notNull().default(''),
+    tagline: text('tagline').notNull().default(''),
+    markdown: text('markdown').notNull().default(''),
+  },
+  (t) => [uniqueIndex('project_translations_pk').on(t.projectId, t.locale)],
+);

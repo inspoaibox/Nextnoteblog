@@ -12,6 +12,8 @@ import * as mediaSvc from '../services/media.ts';
 import { getSettings, isInstalled, updateSettings } from '../services/settings.ts';
 import { loadTheme } from '../theme/engine.ts';
 import { adminOrgRoutes } from './admin-org.ts';
+import { adminShowcaseRoutes } from './admin-showcase.ts';
+import { ensureStarterContent } from '../services/starter.ts';
 import { adminI18nRoutes } from './admin-i18n.ts';
 import { adminThemeRoutes } from './admin-themes.ts';
 import { adminToolRoutes } from './admin-tools.ts';
@@ -129,6 +131,7 @@ export async function adminRoutes(app: FastifyInstance) {
     });
     await updateSettings({ siteName: body.siteName, timezone: body.timezone });
     await i18n.refreshLanguages();
+    await ensureStarterContent(); // 关于页面、友链与开源项目的导航入口
     await auth.audit({ id: user.id, username: body.username, displayName: '', role: 'admin' }, 'setup', 'site', '', '', ip(req));
     setSessionCookie(req, reply, await auth.createSession(user.id, { ip: ip(req), userAgent: req.headers['user-agent'] }));
     return { ok: true };
@@ -345,6 +348,7 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   await app.register(adminOrgRoutes);
+  await app.register(adminShowcaseRoutes);
   await app.register(adminI18nRoutes);
   await app.register(adminThemeRoutes);
   await app.register(adminToolRoutes);

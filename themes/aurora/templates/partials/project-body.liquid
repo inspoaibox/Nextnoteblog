@@ -1,0 +1,44 @@
+{% comment %}
+  开源项目详情。参数：project、content_html（项目介绍，已渲染为 HTML）、posts（相关文章）、tag_url（相关文章更多时的标签页地址）、crumbs
+{% endcomment %}
+<div class="frame">
+  <article class="project">
+    {% render 'partials/crumbs', crumbs: crumbs %}
+    <header class="project-hero">
+      <span class="project-logo is-large" aria-hidden="true">{% if project.logo != "" %}<img src="{{ project.logo }}" alt="" decoding="async">{% else %}{{ project.initial }}{% endif %}</span>
+      <div class="project-hero-text">
+        <h1 class="project-title">{{ project.name }}</h1>
+        {% if project.tagline != "" %}<p class="project-tagline">{{ project.tagline }}</p>{% endif %}
+        <p class="project-actions">
+          {% if project.repo_url != "" %}<a class="project-btn is-primary" href="{{ project.repo_url }}" target="_blank" rel="noopener">{{ 'project_repo' | t }}{% if project.repo_host != "" %} · {{ project.repo_host }}{% endif %}</a>{% endif %}
+          {% if project.homepage != "" %}<a class="project-btn" href="{{ project.homepage }}" target="_blank" rel="noopener">{{ 'project_homepage' | t }}</a>{% endif %}
+          {% if project.docs_url != "" %}<a class="project-btn" href="{{ project.docs_url }}" target="_blank" rel="noopener">{{ 'project_docs' | t }}</a>{% endif %}
+          {% if project.download_url != "" %}<a class="project-btn" href="{{ project.download_url }}" target="_blank" rel="noopener">{{ 'project_download' | t }}</a>{% endif %}
+        </p>
+      </div>
+    </header>
+
+    <dl class="project-facts">
+      <div><dt>{{ 'project_status' | t }}</dt><dd><span class="project-status status-{{ project.status }}">{{ project.status_key | t }}</span></dd></div>
+      {% if project.version != "" %}<div><dt>{{ 'project_version' | t }}</dt><dd>{% if project.release_url != "" %}<a href="{{ project.release_url }}" target="_blank" rel="noopener">{{ project.version }}</a>{% else %}{{ project.version }}{% endif %}{% if project.released_at %}<small><time datetime="{{ project.released_at | date_iso }}">{{ project.released_at | date_fmt: 'medium' }}</time></small>{% endif %}</dd></div>{% endif %}
+      {% if project.language != "" %}<div><dt>{{ 'project_language' | t }}</dt><dd>{{ project.language }}</dd></div>{% endif %}
+      {% if project.license != "" %}<div><dt>{{ 'project_license' | t }}</dt><dd>{{ project.license }}</dd></div>{% endif %}
+      {% if project.stars > 0 %}<div><dt>{{ 'project_stars' | t }}</dt><dd>{{ project.stars | num }}</dd></div>{% endif %}
+      {% if project.forks > 0 %}<div><dt>{{ 'project_forks' | t }}</dt><dd>{{ project.forks | num }}</dd></div>{% endif %}
+    </dl>
+
+    {% if content_html != "" %}<div class="post-content project-readme">{{ content_html | raw }}</div>{% endif %}
+
+    {% if posts.size > 0 %}
+    <section class="project-posts">
+      <h2>{{ 'project_related' | t }}</h2>
+      <ul>
+        {% for post in posts %}<li><a href="{{ post.url }}">{{ post.title }}</a><time datetime="{{ post.date | date_iso }}">{{ post.date | date_fmt: 'medium' }}</time></li>{% endfor %}
+      </ul>
+      {% if tag_url != "" %}<p><a href="{{ tag_url }}">{{ 'project_more_posts' | t }}</a></p>{% endif %}
+    </section>
+    {% endif %}
+
+    <p class="project-back"><a href="{{ '/projects' | url }}">← {{ 'project_all' | t }}</a></p>
+  </article>
+</div>

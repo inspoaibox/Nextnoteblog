@@ -51,6 +51,9 @@ before(async () => {
   app = await buildApp({ logger: false });
   const res = await api('POST', '/setup', { siteName: '组织测试', username: 'admin', password: 'correct-horse' });
   cookie = String(res.res.headers['set-cookie']).split(';')[0];
+  // 这里测的是页面与导航本身：去掉安装时自动放入的“关于”页面和导航（起步内容另有 app-showcase.test.ts）
+  for (const p of (await api('GET', '/pages')).body as { id: number }[]) await api('DELETE', `/pages/${p.id}`);
+  await api('PUT', '/nav/header', { items: [] });
 });
 after(async () => {
   await app.close();
