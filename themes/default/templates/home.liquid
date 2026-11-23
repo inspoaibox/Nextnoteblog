@@ -1,39 +1,84 @@
 {% layout 'layout' %}
 {% block content %}
-<div class="wrap">
+<div class="frame">
   {% if pagination.page == 1 %}
-  <section class="hero">
-    <h1>{{ site.name }}</h1>
-    {% if site.tagline != "" %}<p class="tagline">{{ site.tagline }}</p>{% endif %}
-    {% if site.description != "" %}<p class="intro">{{ site.description }}</p>{% endif %}
+  <section class="masthead">
+    <h1 class="masthead-name hash" data-hash="#">{{ site.name }}</h1>
+    {% if site.tagline != "" %}<p class="masthead-tagline">{{ site.tagline }}</p>{% endif %}
+    {% if site.description != "" %}<p class="masthead-intro">{{ site.description }}</p>{% endif %}
   </section>
   {% endif %}
 
-  {% if featured.size > 0 %}
-  <section class="section">
-    <h2 class="section-title">{{ 'featured' | t }}</h2>
-    <div class="featured-grid">
-      {% for post in featured %}
-      <a class="featured-item" href="{{ post.url }}">
-        {% if post.cover != "" %}<img src="{{ post.cover }}" alt="" loading="lazy" decoding="async">{% endif %}
-        <strong>{{ post.title }}</strong>
-        <span class="meta">{{ post.date | date_fmt: 'medium' }}</span>
-      </a>
-      {% endfor %}
+  {% if posts.size == 0 %}
+    {% render 'partials/empty' %}
+  {% else %}
+    {% comment %} 头条取最新的一篇非置顶文章；置顶文章归入索引里的“置顶”组 {% endcomment %}
+    {% assign lead = nil %}
+    {% if pagination.page == 1 %}
+      {% for p in posts %}{% unless p.pinned %}{% assign lead = p %}{% break %}{% endunless %}{% endfor %}
+    {% endif %}
+    {% if lead %}
+      <article class="lead{% if lead.cover != "" %} has-cover{% endif %}">
+        <div class="lead-text">
+          <p class="lead-date">
+            <time datetime="{{ lead.date | date_iso }}">{{ lead.date | date_fmt }}</time>
+            {% if lead.pinned %}<mark>{{ 'pinned' | t }}</mark>{% endif %}
+          </p>
+          <h2 class="lead-title"><a href="{{ lead.url }}">{{ lead.title }}</a></h2>
+          {% if lead.excerpt != "" %}<p class="lead-excerpt">{{ lead.excerpt }}</p>{% endif %}
+          <p class="row-meta">{{ lead.reading_minutes }} {{ 'minutes' | t }}{% if lead.views > 0 %}<span>{{ lead.views | num }} {{ 'views' | t }}</span>{% endif %}</p>
+        </div>
+        {% if lead.cover != "" %}
+          <a class="lead-cover" href="{{ lead.url }}" tabindex="-1" aria-hidden="true"><img src="{{ lead.cover }}" alt="" decoding="async"></a>
+        {% endif %}
+      </article>
+
+      {% capture featured_items %}{% for post in featured %}{% unless post.id == lead.id %}
+          <li>
+            <a href="{{ post.url }}">{{ post.title }}</a>
+            <time datetime="{{ post.date | date_iso }}">{{ post.date | date_fmt: 'medium' }}</time>
+          </li>{% endunless %}{% endfor %}{% endcapture %}
+      {% assign featured_check = featured_items | strip %}
+      {% if featured_check != "" %}
+      <section class="featured" aria-labelledby="featured-title">
+        <h2 class="featured-label hash" data-hash="##" id="featured-title">{{ 'featured' | t }}</h2>
+        <ul>{{ featured_items | raw }}</ul>
+      </section>
+      {% endif %}
+    {% endif %}
+
+    {% render 'partials/post-index', posts: posts, skip_id: lead.id %}
+    {% render 'partials/pagination', pagination: pagination %}
+  {% endif %}
+
+  {% if pagination.page == 1 %}
+  {% if categories.size > 0 or tags.size > 0 %}
+  <section class="browse">
+    {% if categories.size > 0 %}
+    <div>
+      <h2 class="hash" data-hash="##">{{ 'categories' | t }}</h2>
+      <ul class="cat-list">
+        {% for cat in categories %}
+        <li>
+          <a href="{{ cat.url }}">{{ cat.name }}</a><span>{{ cat.count }}</span>
+          {% if cat.children.size > 0 %}
+          <ul>{% for child in cat.children %}<li><a href="{{ child.url }}">{{ child.name }}</a><span>{{ child.count }}</span></li>{% endfor %}</ul>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
     </div>
-  </section>
-  {% endif %}
-
-  <section class="section">
-    <h2 class="section-title">{{ 'latest' | t }}</h2>
-    {% if posts.size == 0 %}
-      {% render 'partials/empty' %}
-    {% else %}
-      <div class="post-list">
-        {% for post in posts %}{% render 'partials/post-card', post: post %}{% endfor %}
-      </div>
-      {% render 'partials/pagination', pagination: pagination %}
+    {% endif %}
+    {% if tags.size > 0 %}
+    <div>
+      <h2 class="hash" data-hash="##">{{ 'tags' | t }}</h2>
+      <ul class="tag-cloud">
+        {% for tag in tags %}<li><a href="{{ tag.url }}">{{ tag.name }}</a><span>{{ tag.count }}</span></li>{% endfor %}
+      </ul>
+    </div>
     {% endif %}
   </section>
+  {% endif %}
+  {% endif %}
 </div>
 {% endblock %}

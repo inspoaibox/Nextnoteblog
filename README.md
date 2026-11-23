@@ -2,7 +2,12 @@
 
 原生 Markdown 个人博客系统。需求见 [博客开发需求文档.md](博客开发需求文档.md)，整体设计见 [博客系统完整解决方案.md](博客系统完整解决方案.md)。
 
-当前进度：**M1 内容闭环**（安装向导、登录、文章与修订、发布状态机、Markdown 编辑器、图片上传、默认主题的首页 / 列表 / 详情）。
+当前进度：
+
+- **M1 内容闭环**（已完成）：安装向导、登录、文章与修订、发布状态机、Markdown 编辑器、图片上传、默认主题。
+- **M2 组织与前台**（已完成）：多级分类树、标签、专题与系列、自定义页面、导航菜单、站内搜索（中文分词）、归档、面包屑，以及文章批量操作。
+- **M3 多语言**（已完成）：语言管理、各语言独立的文章 / 分类 / 标签 / 专题 / 页面 / 导航、语言切换与 hreflang、界面文案翻译、多语言订阅与站点地图。默认语言的地址不带前缀，其他语言带前缀（如 `/en/…`）。
+- 待做：M4 主题系统（切换 / 导入 / 回滚）、M5 导入导出与备份。
 
 ## 目录结构
 
@@ -21,17 +26,24 @@ data/              运行时数据（数据库、上传文件），不进版本�
 
 ```bash
 pnpm install
-pnpm dev          # 服务端 :3000，后台开发服务器 :5173
+pnpm dev          # 服务端 :3100，后台开发服务器 :5173
 ```
 
-开发时访问 `http://localhost:5173/admin/`（带热更新）；前台访问 `http://localhost:3000/`。
-3000 端口被占用时可指定端口：`pnpm --filter @nexemc/server exec tsx src/server.ts --port=3100`。
+开发时访问 `http://localhost:5173/admin/`（带热更新）；前台访问 `http://localhost:3100/`。
+开发模式固定用 3100 端口，避开常被其他程序占用的 3000；要换端口可改 `apps/server/package.json` 的 `dev` 脚本，并用环境变量 `BLOG_BACKEND` 告诉后台开发服务器。
 
 ```bash
 pnpm test         # Markdown 管线测试 + 服务端端到端测试
 pnpm typecheck
 pnpm build        # 构建后台与服务端
 pnpm start        # 以构建产物运行，后台位于 /admin
+```
+
+要一个带示例内容的站点来调主题，可以用独立的数据目录起一个演示站再灌数据（不影响 `data/`）：
+
+```bash
+pnpm --filter @nexemc/server exec tsx src/server.ts --port=3200 --data-dir=../../data-demo
+pnpm --filter @nexemc/server exec tsx scripts/seed-demo.ts http://localhost:3200
 ```
 
 修改 `apps/server/src/db/schema.ts` 后执行 `pnpm --filter @nexemc/server db:generate` 生成迁移文件；服务启动时会自动执行迁移。

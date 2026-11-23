@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 // src/ 与 dist/ 都位于 apps/server 下，向上三级即仓库（或安装目录）根
 const root = process.env.APP_ROOT ? path.resolve(process.env.APP_ROOT) : path.resolve(here, '../../..');
-const dataDir = path.resolve(process.env.DATA_DIR || path.join(root, 'data'));
+// 数据目录：命令行 --data-dir= 优先，其次环境变量 DATA_DIR
+const dataDir = path.resolve(process.argv.find((a) => a.startsWith('--data-dir='))?.slice(11) || process.env.DATA_DIR || path.join(root, 'data'));
 
 export const config = {
   root,

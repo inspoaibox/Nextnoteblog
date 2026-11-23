@@ -2,6 +2,8 @@
   'use strict';
   const $ = (sel, root = document) => root.querySelector(sel);
   const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+  // 界面文字由模板按当前语言输出在 <body> 上，脚本里不写死任何语言
+  const T = document.body.dataset;
 
   async function copyText(text) {
     try {
@@ -45,14 +47,14 @@
   for (const block of $$('.code-block')) {
     const pre = $('pre', block);
     $('.code-copy', block)?.addEventListener('click', async (e) => {
-      if (await copyText(pre.innerText.replace(/\n$/, ''))) flash(e.currentTarget, '已复制');
+      if (await copyText(pre.innerText.replace(/\n$/, ''))) flash(e.currentTarget, T.tCopied);
     });
     if (Number(block.dataset.lines) > 30) {
       block.classList.add('is-collapsed');
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'code-expand';
-      btn.textContent = `展开全部代码（共 ${block.dataset.lines} 行）`;
+      btn.textContent = (T.tExpand || '').replace('{n}', block.dataset.lines);
       btn.addEventListener('click', () => {
         block.classList.remove('is-collapsed');
         btn.remove();
@@ -67,7 +69,7 @@
   }
   const copyLink = $('.copy-link');
   copyLink?.addEventListener('click', async () => {
-    if (await copyText(location.origin + location.pathname)) flash(copyLink, copyLink.dataset.done || '已复制');
+    if (await copyText(location.origin + location.pathname)) flash(copyLink, copyLink.dataset.done || T.tCopied);
   });
 
   /* 目录定位高亮 */
@@ -88,13 +90,61 @@
     if (window.matchMedia('(max-width: 960px)').matches) $('.toc details')?.removeAttribute('open');
   }
 
+  /*
+   * 语言：记住访客手动选择的语言；首次访问时按浏览器语言给出提示，但不自动跳转。
+   * 只存一个表示语言的 Cookie，不涉及主题或其他偏好。
+   */
+  const langLinks = $$('.lang-switch a[data-lang]');
+  if (langLinks.length) {
+    const current = T.locale;
+    const saved = (document.cookie.match(/(?:^|; )nb_lang=([^;]+)/) || [])[1];
+    const remember = (code) => (document.cookie = `nb_lang=${code}; path=/; max-age=31536000; samesite=lax`);
+    for (const a of langLinks) a.addEventListener('click', () => remember(a.dataset.lang));
+    const available = langLinks.filter((a) => !('missing' in a.dataset));
+    const fromOutside = !document.referrer || new URL(document.referrer).origin !== location.origin;
+    const savedLink = saved && saved !== current ? available.find((a) => a.dataset.lang === saved) : null;
+    if (savedLink && fromOutside) {
+      // 访客之前选过别的语言，而且这一页有那个语言的版本：直接带过去
+      location.replace(savedLink.href);
+    } else if (!saved) {
+      const wanted = (navigator.languages || [navigator.language]).map((l) => l.toLowerCase());
+      const matches = (code) => wanted.some((w) => w === code.toLowerCase() || w.split('-')[0] === code.toLowerCase().split('-')[0]);
+      const suggestion = !matches(current) ? available.find((a) => matches(a.dataset.lang)) : null;
+      const bar = $('.lang-hint');
+      if (suggestion && bar) {
+        $('.lang-hint-text', bar).textContent = bar.dataset.text.replace('{name}', suggestion.textContent);
+        const go = $('.lang-hint-go', bar);
+        go.href = suggestion.href;
+        go.addEventListener('click', () => remember(suggestion.dataset.lang));
+        $('.lang-hint-close', bar).addEventListener('click', () => {
+          remember(current); // 明确留在当前语言，以后不再提示
+          bar.hidden = true;
+        });
+        bar.hidden = false;
+      }
+    }
+  }
+
+  /* 按 / 聚焦搜索框（正在输入时不拦截） */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+    const input = $('.search-form input') || $('.site-search input');
+    if (input) {
+      e.preventDefault();
+      input.focus();
+      input.select();
+    }
+  });
+
   /* 图片灯箱 */
   for (const img of $$('.post-content img')) {
     img.addEventListener('click', () => {
       const box = document.createElement('div');
       box.className = 'lightbox';
       box.setAttribute('role', 'dialog');
-      box.setAttribute('aria-label', img.alt || '图片');
+      box.setAttribute('aria-label', img.alt || T.tImage);
       const big = document.createElement('img');
       big.src = img.currentSrc || img.src;
       big.alt = img.alt;

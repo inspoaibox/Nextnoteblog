@@ -3,7 +3,65 @@ import { api } from '../api';
 import { useStatus } from '../App';
 import { Field, toast } from '../components/ui';
 
+function SiteTexts() {
+  const { status } = useStatus();
+  const [data, setData] = useState<any>(null);
+  const [form, setForm] = useState({ siteName: '', tagline: '', description: '', footerText: '' });
+  const lang = status.languages.find((l) => l.code === status.contentLocale);
+
+  useEffect(() => {
+    api('GET', '/site-texts')
+      .then((d) => {
+        setData(d);
+        setForm({ siteName: '', tagline: '', description: '', footerText: '', ...d.texts });
+      })
+      .catch((e) => toast(e.message, 'error'));
+  }, []);
+  if (!data) return <div className="muted">加载中…</div>;
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    try {
+      await api('PUT', '/site-texts', form);
+      toast('已保存');
+    } catch (err) {
+      toast((err as Error).message, 'error');
+    }
+  };
+
+  return (
+    <>
+      <header className="page-head">
+        <h1>设置</h1>
+      </header>
+      <form className="panel form-narrow" onSubmit={save}>
+        <h2>{lang?.name} 的站点文案</h2>
+        <p className="muted">留空的项使用默认语言的内容（灰色文字）。时区、外观等与语言无关的设置，请把左侧“内容语言”切回默认语言后修改。</p>
+        <Field label="站点名称">
+          <input value={form.siteName} onChange={set('siteName')} placeholder={data.fallback.siteName} maxLength={100} />
+        </Field>
+        <Field label="标语">
+          <input value={form.tagline} onChange={set('tagline')} placeholder={data.fallback.tagline} maxLength={200} />
+        </Field>
+        <Field label="站点介绍">
+          <textarea rows={3} value={form.description} onChange={set('description')} placeholder={data.fallback.description} maxLength={500} />
+        </Field>
+        <Field label="页脚说明">
+          <input value={form.footerText} onChange={set('footerText')} placeholder={data.fallback.footerText} maxLength={500} />
+        </Field>
+        <button className="btn btn-primary">保存</button>
+      </form>
+    </>
+  );
+}
+
 export function Settings() {
+  const { status } = useStatus();
+  return status.contentLocale === status.site.defaultLocale ? <BaseSettings /> : <SiteTexts />;
+}
+
+function BaseSettings() {
   const { reload } = useStatus();
   const [form, setForm] = useState<any>(null);
   const [saving, setSaving] = useState(false);

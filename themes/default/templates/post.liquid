@@ -1,12 +1,13 @@
 {% layout 'layout' %}
 {% block content %}
 {% if preview %}<div class="banner banner-preview">{{ 'preview_banner' | t }}</div>{% endif %}
-<div class="wrap post-layout{% if post.show_toc %} with-toc{% endif %}">
+<div class="frame post-layout{% if post.show_toc %} with-toc{% endif %}">
   <article class="post">
+    {% render 'partials/crumbs', crumbs: crumbs %}
     <header class="post-header">
-      <h1 class="post-title">{{ post.title }}</h1>
+      <h1 class="post-title hash" data-hash="#">{{ post.title }}</h1>
       {% if post.subtitle != "" %}<p class="post-subtitle">{{ post.subtitle }}</p>{% endif %}
-      <p class="meta">
+      <p class="post-meta">
         {% if post.author %}<span>{{ post.author }}</span>{% endif %}
         <time datetime="{{ post.date | date_iso }}">{{ post.date | date_fmt }}</time>
         {% if post.show_updated %}<span>{{ 'updated_on' | t }} <time datetime="{{ post.updated | date_iso }}">{{ post.updated | date_fmt }}</time></span>{% endif %}
@@ -18,16 +19,42 @@
     {% if post.archived %}<div class="banner">{{ 'archived_banner' | t }}</div>{% endif %}
     {% if post.cover != "" %}<img class="post-cover" src="{{ post.cover }}" alt="">{% endif %}
 
+    {% if series %}
+    <aside class="series-box" aria-label="{{ 'series' | t }}">
+      <p>{{ 'series_position' | t | replace: '{n}', series.position | replace: '{total}', series.total }} <a href="{{ series.url }}">{{ series.title }}</a></p>
+      <details>
+        <summary>{{ 'series_chapters' | t }}</summary>
+        <ol>
+          {% for chapter in series.chapters %}<li>{% if chapter.current %}<strong>{{ chapter.title }}</strong>{% else %}<a href="{{ chapter.url }}">{{ chapter.title }}</a>{% endif %}</li>{% endfor %}
+        </ol>
+      </details>
+    </aside>
+    {% endif %}
+
     <div class="post-content">{{ post.html | raw }}</div>
 
+    {% if post.categories.size > 0 or post.tags.size > 0 %}
+    <dl class="post-taxonomy">
+      {% if post.categories.size > 0 %}<div><dt>{{ 'categories' | t }}</dt><dd>{% for c in post.categories %}<a href="{{ c.url }}">{{ c.name }}</a>{% endfor %}</dd></div>{% endif %}
+      {% if post.tags.size > 0 %}<div><dt>{{ 'tags' | t }}</dt><dd>{% for tag in post.tags %}<a href="{{ tag.url }}">{{ tag.name }}</a>{% endfor %}</dd></div>{% endif %}
+    </dl>
+    {% endif %}
+
+    {% if series %}{% if series.prev or series.next %}
+    <nav class="post-nav series-nav" aria-label="{{ 'series' | t }}">
+      {% if series.prev %}<a href="{{ series.prev.url }}" rel="prev"><span>{{ 'series_prev' | t }}</span><strong>{{ series.prev.title }}</strong></a>{% else %}<span></span>{% endif %}
+      {% if series.next %}<a class="is-next" href="{{ series.next.url }}" rel="next"><span>{{ 'series_next' | t }}</span><strong>{{ series.next.title }}</strong></a>{% else %}<span></span>{% endif %}
+    </nav>
+    {% endif %}{% endif %}
+
     <footer class="post-footer">
-      <button class="btn copy-link" type="button" data-done="{{ 'copied' | t }}">{{ 'copy_link' | t }}</button>
+      <button class="copy-link" type="button" data-done="{{ 'copied' | t }}">{{ 'copy_link' | t }}</button>
     </footer>
 
     {% if prev or next %}
-    <nav class="post-nav" aria-label="文章导航">
-      {% if prev %}<a href="{{ prev.url }}" rel="prev"><span class="meta">← {{ 'prev_post' | t }}</span><strong>{{ prev.title }}</strong></a>{% else %}<span></span>{% endif %}
-      {% if next %}<a class="is-next" href="{{ next.url }}" rel="next"><span class="meta">{{ 'next_post' | t }} →</span><strong>{{ next.title }}</strong></a>{% else %}<span></span>{% endif %}
+    <nav class="post-nav" aria-label="{{ 'post_nav' | t }}">
+      {% if prev %}<a href="{{ prev.url }}" rel="prev"><span>{{ 'prev_post' | t }}</span><strong>{{ prev.title }}</strong></a>{% else %}<span></span>{% endif %}
+      {% if next %}<a class="is-next" href="{{ next.url }}" rel="next"><span>{{ 'next_post' | t }}</span><strong>{{ next.title }}</strong></a>{% else %}<span></span>{% endif %}
     </nav>
     {% endif %}
   </article>

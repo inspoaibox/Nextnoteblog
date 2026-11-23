@@ -10,6 +10,12 @@ export class ApiError extends Error {
 
 const BASE = '/admin/api';
 
+/** 后台当前编辑的内容语言；随每个请求发给服务器 */
+const LOCALE_KEY = 'nb:content-locale';
+export const getContentLocale = () => localStorage.getItem(LOCALE_KEY) ?? '';
+export const setContentLocale = (code: string) => localStorage.setItem(LOCALE_KEY, code);
+const localeHeader = (): Record<string, string> => (getContentLocale() ? { 'x-nb-locale': getContentLocale() } : {});
+
 async function handle(res: Response) {
   const text = await res.text();
   let json: any = null;
@@ -31,7 +37,7 @@ export async function api<T = any>(method: string, url: string, body?: unknown):
     res = await fetch(BASE + url, {
       method,
       credentials: 'same-origin',
-      headers: { 'x-nb-csrf': '1', ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
+      headers: { 'x-nb-csrf': '1', ...localeHeader(), ...(body !== undefined ? { 'content-type': 'application/json' } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {

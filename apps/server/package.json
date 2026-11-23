@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "node --watch-path=src --watch-path=../../packages/markdown/src --import tsx src/server.ts --port=3100",
     "start": "node dist/server.js",
     "build": "tsup",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "tsx --test src/app.test.ts src/lib/slug.test.ts",
+    "test": "tsx --test src/app.test.ts src/app-m2.test.ts src/app-m3.test.ts src/lib/slug.test.ts",
     "db:generate": "drizzle-kit generate"
   },
   "devDependencies": {

@@ -1,0 +1,23 @@
+{% layout 'layout' %}
+{% block content %}
+<div class="frame">
+  <header class="list-header">
+    <h1 class="hash" data-hash="#">{{ 'archive' | t }}</h1>
+    <p>{{ 'post_count' | t | replace: '{n}', total }}</p>
+  </header>
+  {% if total == 0 %}
+    {% render 'partials/empty' %}
+  {% else %}
+    <div class="index archive">
+      {% for group in years %}
+      <h2 class="index-group">{{ group.year }}<span>{{ 'post_count' | t | replace: '{n}', group.count }}</span></h2>
+      <ul>
+        {% for post in group.posts %}
+        <li><time datetime="{{ post.date | date_iso }}">{{ post.date | date_fmt: 'md' }}</time><a href="{{ post.url }}">{{ post.title }}</a></li>
+        {% endfor %}
+      </ul>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

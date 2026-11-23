@@ -4,8 +4,37 @@
     {
       "name": "blog",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@nexemc/server", "exec", "tsx", "src/server.ts", "--port=3100"],
+      "runtimeArgs": [
+        "--filter",
+        "@nexemc/server",
+        "dev"
+      ],
       "port": 3100
+    },
+    {
+      "name": "admin",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@nexemc/admin",
+        "dev",
+        "--strictPort"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "theme-demo",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@nexemc/server",
+        "exec",
+        "tsx",
+        "src/server.ts",
+        "--port=3200",
+        "--data-dir=../../data-demo"
+      ],
+      "port": 3200
     }
   ]
 }

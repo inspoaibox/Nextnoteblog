@@ -12,11 +12,24 @@ import { siteRoutes, siteNotFound } from './routes/site.ts';
 import { pageCache } from './services/render.ts';
 import { flushViews } from './services/posts.ts';
 import { themeAssetsDir } from './theme/engine.ts';
+import { invalidateTaxonomy } from './services/taxonomy.ts';
+import { indexedCount, rebuildIndex } from './services/search.ts';
+import { listLanguages, splitLocale } from './services/i18n.ts';
 
 export async function buildApp(opts: { logger?: boolean } = {}) {
   await runMigrations();
 
+  await listLanguages(); // 预热语言表，地址改写是同步的
+
   const app = Fastify({
+    // /en/posts/x → /posts/x，并记下语言；这样所有前台路由天然支持每一种语言
+    rewriteUrl(req) {
+      const url = req.url ?? '/';
+      const hit = splitLocale(url);
+      if (!hit || /^\/(admin|uploads|theme|healthz)(\/|$|\?)/.test(hit.url)) return url;
+      (req as { nbLocale?: string }).nbLocale = hit.locale;
+      return hit.url;
+    },
     logger: opts.logger ?? true,
     trustProxy: true, // 运行在 Caddy / Nginx 之后
     bodyLimit: 4 * 1024 * 1024,
@@ -66,7 +79,10 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
 
   // 后台写操作成功后，整页缓存整体失效（M1 采用最简单可靠的策略）
   app.addHook('onResponse', async (req, reply) => {
-    if (req.method !== 'GET' && req.url.startsWith('/admin/api') && reply.statusCode < 400) pageCache.clear();
+    if (req.method !== 'GET' && req.url.startsWith('/admin/api') && reply.statusCode < 400) {
+      pageCache.clear();
+      invalidateTaxonomy(); // 分类计数依赖文章状态
+    }
   });
 
   /* ---------- 后台单页应用 ---------- */
@@ -91,6 +107,9 @@ export async function buildApp(opts: { logger?: boolean } = {}) {
     if (url.startsWith('/uploads/') || url.startsWith('/theme/') || url.startsWith('/admin/')) return reply.code(404).send();
     return siteNotFound(req, reply);
   });
+
+  // 搜索索引是派生数据：为空时（首次升级、被清空）自动重建
+  if (indexedCount() === 0) await rebuildIndex();
 
   const viewTimer = setInterval(() => flushViews().catch((err) => app.log.error(err)), 15_000);
   app.addHook('onClose', async () => {

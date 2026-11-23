@@ -15,6 +15,8 @@ export interface SiteSettings {
   activeTheme: string;
   icp: string;
   footerText: string;
+  /** 当前内容没有某语言的译文时，语言切换器里该语言的处理：指向该语言首页，或直接不显示 */
+  langFallback: 'home' | 'hide';
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -29,6 +31,7 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   activeTheme: 'default',
   icp: '',
   footerText: '',
+  langFallback: 'home',
 };
 
 let cache: SiteSettings | null = null;

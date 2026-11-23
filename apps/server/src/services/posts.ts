@@ -32,6 +32,14 @@ export const postPath = (slug: string) => `/posts/${slug}`;
 /** 无标题新建时生成的占位地址：post-<时间戳> */
 const PLACEHOLDER_SLUG = /^post-[a-z0-9]{6,}$/;
 
+/** 旧地址 → 新地址的 301；同时修正已有的跳转链，避免连环跳转或自己跳自己 */
+export async function addRedirect(from: string, to: string) {
+  if (!from || !to || from === to) return;
+  await db.delete(redirects).where(eq(redirects.fromPath, to));
+  await db.update(redirects).set({ toPath: to }).where(eq(redirects.toPath, from));
+  await db.insert(redirects).values({ fromPath: from, toPath: to, createdAt: Date.now() }).onConflictDoUpdate({ target: redirects.fromPath, set: { toPath: to } });
+}
+
 async function getTranslation(tid: number) {
   const row = await db.select().from(pt).where(eq(pt.id, tid)).get();
   if (!row) throw notFound('文章');
@@ -94,7 +102,62 @@ export async function getForEdit(tid: number) {
     published: published ? { id: published.id, title: published.title, updatedAt: published.updatedAt } : null,
     hasPendingChanges: !!t.publishedRevisionId && t.publishedRevisionId !== t.draftRevisionId,
     path: postPath(t.slug),
+    ...(await translationInfo(t)),
   };
+}
+
+/** 同一篇文章的其他语言版本，以及（如果这是译文）原文在翻译之后是否又发布过 */
+async function translationInfo(t: typeof pt.$inferSelect) {
+  const siblings = await db.select({ id: pt.id, locale: pt.locale, status: pt.status, slug: pt.slug, publishedRevisionId: pt.publishedRevisionId }).from(pt).where(eq(pt.postId, t.postId));
+  const source = t.sourceTranslationId ? siblings.find((s) => s.id === t.sourceTranslationId) : undefined;
+  return {
+    siblings: siblings.map(({ publishedRevisionId: _p, ...rest }) => rest),
+    source: source ? { id: source.id, locale: source.locale, stale: !!source.publishedRevisionId && source.publishedRevisionId !== t.sourceRevisionId } : null,
+  };
+}
+
+/** 复制一个语言版本，创建另一种语言的译文草稿 */
+export async function createTranslation(sourceTid: number, locale: string, userId: number) {
+  return transaction(async () => {
+    const source = await getTranslation(sourceTid);
+    if (source.locale === locale) throw badRequest('译文的语言不能与原文相同');
+    const exists = await db.select({ id: pt.id }).from(pt).where(and(eq(pt.postId, source.postId), eq(pt.locale, locale))).get();
+    if (exists) throw new HttpError(409, '该语言的译文已存在', { id: exists.id });
+    const draft = (await getRevisionRow(source.draftRevisionId))!;
+    const now = Date.now();
+    const slug = await uniqueSlug(source.slug, locale);
+    const t = await db
+      .insert(pt)
+      .values({ postId: source.postId, locale, slug, status: 'draft', sourceTranslationId: source.id, sourceRevisionId: source.publishedRevisionId ?? source.draftRevisionId, createdAt: now, updatedAt: now })
+      .returning({ id: pt.id })
+      .get();
+    const { id: _id, ...content } = draft;
+    const rev = await db
+      .insert(revisions)
+      .values({ ...content, translationId: t.id, kind: 'manual', note: `复制自 ${source.locale} 版本，待翻译`, authorId: userId, createdAt: now, updatedAt: now })
+      .returning({ id: revisions.id })
+      .get();
+    await db.update(pt).set({ draftRevisionId: rev.id }).where(eq(pt.id, t.id));
+    return { id: t.id, slug };
+  });
+}
+
+/** 译者确认译文已跟上原文的最新发布版本 */
+export async function markTranslationSynced(tid: number) {
+  const t = await getTranslation(tid);
+  if (!t.sourceTranslationId) throw badRequest('这不是一篇译文');
+  const source = await getTranslation(t.sourceTranslationId);
+  await db.update(pt).set({ sourceRevisionId: source.publishedRevisionId ?? source.draftRevisionId }).where(eq(pt.id, tid));
+  return getForEdit(tid);
+}
+
+/** 一篇文章在各语言的已发布版本，用于前台语言切换与 hreflang */
+export function getPublishedLocales(postId: number) {
+  return db
+    .select({ locale: pt.locale, slug: pt.slug })
+    .from(pt)
+    .innerJoin(posts, and(eq(posts.id, pt.postId), isNull(posts.deletedAt)))
+    .where(and(eq(pt.postId, postId), inArray(pt.status, PUBLIC_STATUSES)));
 }
 
 /* ---------- 保存草稿 ---------- */
@@ -165,11 +228,7 @@ export async function updateMeta(tid: number, patch: { slug?: string; pinned?: b
       set.slug = patch.slug;
       if (t.firstPublishedAt) {
         // 已经公开过的地址：自动留下 301，旧链接不失效
-        const from = postPath(t.slug);
-        const to = postPath(patch.slug);
-        await db.delete(redirects).where(eq(redirects.fromPath, to));
-        await db.update(redirects).set({ toPath: to }).where(eq(redirects.toPath, from));
-        await db.insert(redirects).values({ fromPath: from, toPath: to, createdAt: now }).onConflictDoUpdate({ target: redirects.fromPath, set: { toPath: to } });
+        await addRedirect(postPath(t.slug), postPath(patch.slug));
       }
     }
     if (patch.firstPublishedAt !== undefined && t.firstPublishedAt) set.firstPublishedAt = patch.firstPublishedAt ?? t.firstPublishedAt;
@@ -327,16 +386,22 @@ export async function restoreRevision(tid: number, rid: number, userId: number) 
 
 /* ---------- 后台列表 ---------- */
 
-export type AdminFilter = 'all' | 'draft' | 'published' | 'pending' | 'unpublished' | 'archived' | 'trash';
+export type AdminFilter = 'all' | 'draft' | 'published' | 'pending' | 'unpublished' | 'archived' | 'trash' | 'untranslated';
 
-export async function listForAdmin(opts: { filter: AdminFilter; q?: string; page: number; pageSize: number }) {
-  const conds = [opts.filter === 'trash' ? isNotNull(posts.deletedAt) : isNull(posts.deletedAt)];
+/** 默认语言里有、但指定语言还没有译文的文章（不含回收站） */
+const missingIn = (locale: string, sourceLocale: string) =>
+  and(eq(pt.locale, sourceLocale), isNull(posts.deletedAt), sql`not exists (select 1 from post_translations other where other.post_id = ${pt.postId} and other.locale = ${locale})`);
+
+export async function listForAdmin(opts: { filter: AdminFilter; q?: string; page: number; pageSize: number; categoryIds?: number[]; locale: string; sourceLocale?: string }) {
+  const untranslated = opts.filter === 'untranslated';
+  const conds = untranslated ? [missingIn(opts.locale, opts.sourceLocale ?? opts.locale)] : [opts.filter === 'trash' ? isNotNull(posts.deletedAt) : isNull(posts.deletedAt), eq(pt.locale, opts.locale)];
   if (opts.filter === 'pending') conds.push(isNotNull(pt.publishedRevisionId), ne(pt.publishedRevisionId, pt.draftRevisionId));
-  else if (opts.filter !== 'all' && opts.filter !== 'trash') conds.push(eq(pt.status, opts.filter));
+  else if (opts.filter !== 'all' && opts.filter !== 'trash' && !untranslated) conds.push(eq(pt.status, opts.filter));
   if (opts.q?.trim()) {
     const pattern = `%${opts.q.trim()}%`;
     conds.push(or(like(revisions.title, pattern), like(pt.slug, pattern))!);
   }
+  if (opts.categoryIds) conds.push(inArray(posts.id, db.select({ id: schema.postCategories.postId }).from(schema.postCategories).where(inArray(schema.postCategories.categoryId, opts.categoryIds))));
   const where = and(...conds);
   const base = () => db.select().from(pt).innerJoin(posts, eq(posts.id, pt.postId)).innerJoin(revisions, eq(revisions.id, pt.draftRevisionId));
 
@@ -355,11 +420,23 @@ export async function listForAdmin(opts: { filter: AdminFilter; q?: string; page
     .limit(opts.pageSize)
     .offset((opts.page - 1) * opts.pageSize);
 
+  const primary = rows.length
+    ? await db
+        .select({ postId: schema.postCategories.postId, categoryId: schema.postCategories.categoryId })
+        .from(schema.postCategories)
+        .where(and(eq(schema.postCategories.isPrimary, 1), inArray(schema.postCategories.postId, rows.map((r) => r.posts.id))))
+    : [];
+  const primaryByPost = new Map(primary.map((r) => [r.postId, r.categoryId]));
+  // 语言覆盖情况：每篇文章已有哪些语言版本
+  const coverage = rows.length ? await db.select({ postId: pt.postId, id: pt.id, locale: pt.locale, status: pt.status }).from(pt).where(inArray(pt.postId, rows.map((r) => r.posts.id))) : [];
+
   return {
     total,
     page: opts.page,
     pageSize: opts.pageSize,
     items: rows.map(({ post_translations: t, posts: p, revisions: r }) => ({
+      primaryCategoryId: primaryByPost.get(p.id) ?? null,
+      translations: coverage.filter((c) => c.postId === p.id).map(({ postId: _p, ...rest }) => rest),
       id: t.id,
       postId: p.id,
       title: r.title,
@@ -379,13 +456,14 @@ export async function listForAdmin(opts: { filter: AdminFilter; q?: string; page
   };
 }
 
-export async function counts() {
+export async function counts(locale: string, sourceLocale?: string) {
   const rows = await db
     .select({ status: pt.status, trashed: sql<number>`${posts.deletedAt} is not null`, pending: sql<number>`${pt.publishedRevisionId} is not null and ${pt.publishedRevisionId} != ${pt.draftRevisionId}`, n: sql<number>`count(*)` })
     .from(pt)
     .innerJoin(posts, eq(posts.id, pt.postId))
+    .where(eq(pt.locale, locale))
     .groupBy(pt.status, sql`2`, sql`3`);
-  const out: Record<AdminFilter, number> = { all: 0, draft: 0, published: 0, pending: 0, unpublished: 0, archived: 0, trash: 0 };
+  const out: Record<AdminFilter, number> = { all: 0, draft: 0, published: 0, pending: 0, unpublished: 0, archived: 0, trash: 0, untranslated: 0 };
   for (const r of rows) {
     if (r.trashed) {
       out.trash += r.n;
@@ -394,6 +472,9 @@ export async function counts() {
     out.all += r.n;
     if (r.status in out) out[r.status as AdminFilter] += r.n;
     if (r.pending) out.pending += r.n;
+  }
+  if (sourceLocale && sourceLocale !== locale) {
+    out.untranslated = (await db.select({ n: sql<number>`count(*)` }).from(pt).innerJoin(posts, eq(posts.id, pt.postId)).where(missingIn(locale, sourceLocale)).get())!.n;
   }
   return out;
 }
@@ -404,6 +485,7 @@ const publicSelect = () =>
   db
     .select({
       id: pt.id,
+      postId: posts.id,
       slug: pt.slug,
       status: pt.status,
       revisionId: revisions.id,
@@ -427,12 +509,24 @@ const publicSelect = () =>
 
 export type PublicPost = NonNullable<Awaited<ReturnType<typeof getPublicBySlug>>>;
 
-const listed = (locale: string) => and(eq(pt.locale, locale), eq(pt.status, 'published'), isNull(posts.deletedAt));
+export interface PublicFilter {
+  categoryIds?: number[];
+  tagId?: number;
+}
 
-export async function listPublic(locale: string, page: number, pageSize: number) {
-  const total = (await db.select({ n: sql<number>`count(*)` }).from(pt).innerJoin(posts, eq(posts.id, pt.postId)).where(listed(locale)).get())!.n;
+const listed = (locale: string, filter: PublicFilter = {}) =>
+  and(
+    eq(pt.locale, locale),
+    eq(pt.status, 'published'),
+    isNull(posts.deletedAt),
+    filter.categoryIds ? inArray(posts.id, db.select({ id: schema.postCategories.postId }).from(schema.postCategories).where(inArray(schema.postCategories.categoryId, filter.categoryIds))) : undefined,
+    filter.tagId ? inArray(posts.id, db.select({ id: schema.postTags.postId }).from(schema.postTags).where(eq(schema.postTags.tagId, filter.tagId))) : undefined,
+  );
+
+export async function listPublic(locale: string, page: number, pageSize: number, filter: PublicFilter = {}) {
+  const total = (await db.select({ n: sql<number>`count(*)` }).from(pt).innerJoin(posts, eq(posts.id, pt.postId)).where(listed(locale, filter)).get())!.n;
   const items = await publicSelect()
-    .where(listed(locale))
+    .where(listed(locale, filter))
     .orderBy(desc(posts.pinned), desc(pt.firstPublishedAt), desc(pt.id))
     .limit(pageSize)
     .offset((page - 1) * pageSize);
@@ -441,6 +535,42 @@ export async function listPublic(locale: string, page: number, pageSize: number)
 
 export function listFeatured(locale: string, limit: number) {
   return publicSelect().where(and(listed(locale), eq(posts.featured, 1))).orderBy(desc(pt.firstPublishedAt)).limit(limit);
+}
+
+/** 按给定的语言版本 id 取已发布文章，保持传入顺序（搜索结果、专题条目用） */
+export async function getPublicByIds(locale: string, tids: number[]) {
+  if (!tids.length) return [];
+  const rows = await publicSelect().where(and(listed(locale), inArray(pt.id, tids)));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return tids.map((id) => byId.get(id)).filter((r) => !!r);
+}
+
+/** 按文章主体 id 取已发布文章，保持传入顺序 */
+export async function getPublicByPostIds(locale: string, postIds: number[]) {
+  if (!postIds.length) return [];
+  const rows = await publicSelect().where(and(listed(locale), inArray(posts.id, postIds)));
+  const byPost = new Map(rows.map((r) => [r.postId, r]));
+  return postIds.map((id) => byPost.get(id)).filter((r) => !!r);
+}
+
+/** 归档页用的轻量列表：全部已发布文章的标题、地址与日期 */
+export function listArchive(locale: string) {
+  return db
+    .select({ id: pt.id, slug: pt.slug, title: revisions.title, date: pt.firstPublishedAt })
+    .from(pt)
+    .innerJoin(posts, eq(posts.id, pt.postId))
+    .innerJoin(revisions, eq(revisions.id, pt.publishedRevisionId))
+    .where(listed(locale))
+    .orderBy(desc(pt.firstPublishedAt), desc(pt.id));
+}
+
+/** 站点地图用：某语言下全部可公开访问的文章 */
+export function listSitemap(locale: string) {
+  return db
+    .select({ postId: pt.postId, slug: pt.slug, updated: pt.contentUpdatedAt })
+    .from(pt)
+    .innerJoin(posts, and(eq(posts.id, pt.postId), isNull(posts.deletedAt)))
+    .where(and(eq(pt.locale, locale), eq(pt.status, 'published')));
 }
 
 export function getPublicBySlug(locale: string, slug: string) {
@@ -464,6 +594,7 @@ export async function getDraftAsPublic(tid: number) {
   const author = post.authorId ? await db.select({ name: schema.users.displayName }).from(schema.users).where(eq(schema.users.id, post.authorId)).get() : null;
   return {
     id: t.id,
+    postId: post.id,
     slug: t.slug,
     status: t.status,
     revisionId: draft.id,

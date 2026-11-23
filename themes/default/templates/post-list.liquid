@@ -1,16 +1,16 @@
 {% layout 'layout' %}
 {% block content %}
-<div class="wrap">
+<div class="frame">
+  {% render 'partials/crumbs', crumbs: crumbs %}
   <header class="list-header">
-    <h1>{{ 'all_posts' | t }}</h1>
-    <p class="meta">{{ pagination.total | num }}</p>
+    <h1 class="hash" data-hash="#">{{ heading }}</h1>
+    {% if intro and intro != "" %}<p class="list-intro">{{ intro }}</p>{% endif %}
+    <p>{{ 'post_count' | t | replace: '{n}', pagination.total }}</p>
   </header>
   {% if posts.size == 0 %}
     {% render 'partials/empty' %}
   {% else %}
-    <div class="post-list">
-      {% for post in posts %}{% render 'partials/post-card', post: post %}{% endfor %}
-    </div>
+    {% render 'partials/post-index', posts: posts, skip_id: 0 %}
     {% render 'partials/pagination', pagination: pagination %}
   {% endif %}
 </div>

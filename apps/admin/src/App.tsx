@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { api } from './api';
+import { api, setContentLocale } from './api';
 import { UiHost, toast } from './components/ui';
 import { Setup } from './pages/Setup';
 import { Login } from './pages/Login';
@@ -9,8 +9,25 @@ import { Posts } from './pages/Posts';
 import { Editor } from './pages/Editor';
 import { Media } from './pages/Media';
 import { Settings } from './pages/Settings';
+import { Categories } from './pages/Categories';
+import { Tags } from './pages/Tags';
+import { Collections } from './pages/Collections';
+import { Pages, PageEditor } from './pages/Pages';
+import { Nav } from './pages/Nav';
+import { Languages } from './pages/Languages';
+
+export interface Language {
+  code: string;
+  name: string;
+  enabled: boolean;
+  isDefault: boolean;
+  prefix: string;
+}
 
 export interface Status {
+  languages: Language[];
+  /** 后台当前正在编辑哪种语言的内容 */
+  contentLocale: string;
   installed: boolean;
   user: { id: number; username: string; displayName: string; role: string } | null;
   site: { name: string; defaultLocale: string; timezone: string; appearance: 'light' | 'dark' | 'auto' };
@@ -68,6 +85,7 @@ export function App() {
       ) : (
         <Routes>
           <Route path="/posts/:id" element={<Editor />} />
+          <Route path="/pages/:id" element={<PageEditor />} />
           <Route path="*" element={<Shell />} />
         </Routes>
       )}
@@ -100,6 +118,25 @@ function Shell() {
     <div className="shell">
       <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
         <div className="sidebar-brand">{status.site.name}</div>
+        {status.languages.length > 1 && (
+          <label className="locale-pick">
+            <span>内容语言</span>
+            <select
+              value={status.contentLocale}
+              onChange={async (e) => {
+                setContentLocale(e.target.value);
+                await reload();
+              }}
+            >
+              {status.languages.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.name}
+                  {l.isDefault ? '（默认）' : l.enabled ? '' : '（未启用）'}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button className="btn btn-primary btn-block" onClick={() => void newPost()}>
           ＋ 新建文章
         </button>
@@ -107,8 +144,17 @@ function Shell() {
           <NavLink to="/" end>
             仪表盘
           </NavLink>
+          <span className="nav-group">内容</span>
           <NavLink to="/posts">文章</NavLink>
+          <NavLink to="/pages">页面</NavLink>
           <NavLink to="/media">媒体库</NavLink>
+          <span className="nav-group">组织</span>
+          <NavLink to="/categories">分类</NavLink>
+          <NavLink to="/tags">标签</NavLink>
+          <NavLink to="/collections">专题与系列</NavLink>
+          <span className="nav-group">站点</span>
+          <NavLink to="/nav">导航</NavLink>
+          <NavLink to="/languages">多语言</NavLink>
           <NavLink to="/settings">设置</NavLink>
         </nav>
         <div className="sidebar-foot">
@@ -125,10 +171,16 @@ function Shell() {
         <button className="menu-toggle btn" onClick={() => setMenuOpen((v) => !v)} aria-label="菜单">
           ☰ 菜单
         </button>
-        <Routes>
+        <Routes key={status.contentLocale}>
           <Route path="/" element={<Dashboard onNew={newPost} />} />
           <Route path="/posts" element={<Posts onNew={newPost} />} />
           <Route path="/media" element={<Media />} />
+          <Route path="/pages" element={<Pages />} />
+          <Route path="/categories" element={<Categories />} />
+          <Route path="/tags" element={<Tags />} />
+          <Route path="/collections" element={<Collections />} />
+          <Route path="/nav" element={<Nav />} />
+          <Route path="/languages" element={<Languages />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/setup" element={<Navigate to="/" replace />} />
           <Route path="*" element={<div className="empty">页面不存在</div>} />

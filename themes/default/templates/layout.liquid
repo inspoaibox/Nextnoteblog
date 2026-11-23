@@ -13,19 +13,35 @@
   {% if page.description and page.description != "" %}<meta property="og:description" content="{{ page.description }}">{% endif %}
   {% if page.image and page.image != "" %}<meta property="og:image" content="{{ site.url }}{{ page.image }}">{% endif %}
   <meta name="color-scheme" content="{% if site.appearance == 'auto' %}light dark{% else %}{{ site.appearance }}{% endif %}">
+  {% for alt in hreflang %}<link rel="alternate" hreflang="{{ alt.code }}" href="{{ alt.href }}">
+  {% endfor %}<link rel="alternate" type="application/atom+xml" title="{{ site.name }}" href="{{ site.feed_url }}">
   <link rel="stylesheet" href="{{ 'style.css' | asset_url }}">
 </head>
-<body class="page-{{ page.type }}">
+<body class="page-{{ page.type }}" data-locale="{{ site.locale }}" data-t-copied="{{ 'copied' | t }}" data-t-expand="{{ 'expand_code' | t }}" data-t-image="{{ 'image' | t }}">
   <a class="skip-link" href="#main">{{ 'skip_to_content' | t }}</a>
   <div class="progress" aria-hidden="true"><span></span></div>
 
+  {% if languages.size > 1 %}
+  <div class="lang-hint" data-text="{{ 'lang_suggest' | t }}" hidden>
+    <span class="lang-hint-text"></span>
+    <a class="lang-hint-go" href="#">{{ 'lang_suggest_go' | t }}</a>
+    <button class="lang-hint-close" type="button">{{ 'lang_suggest_dismiss' | t }}</button>
+  </div>
+  {% endif %}
   <header class="site-header">
-    <div class="wrap">
-      <a class="brand" href="/">{{ site.name }}</a>
-      <nav class="site-nav" aria-label="主导航">
-        <a href="/"{% if page.type == 'home' %} aria-current="page"{% endif %}>{{ 'nav_home' | t }}</a>
-        <a href="/posts"{% if page.type == 'list' or page.type == 'post' %} aria-current="page"{% endif %}>{{ 'nav_posts' | t }}</a>
+    <div class="frame">
+      <a class="brand" href="{{ '/' | url }}">{{ site.name }}</a>
+      <nav class="site-nav" aria-label="{{ 'main_nav' | t }}">
+        {% for item in nav.header %}<a href="{{ item.url }}"{% if item.current %} aria-current="page"{% endif %}{% if item.new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.label }}</a>{% endfor %}
       </nav>
+      <form class="site-search" action="{{ '/search' | url }}" method="get" role="search">
+        <input type="search" name="q" value="{{ query }}" placeholder="{{ 'search_placeholder' | t }}" aria-label="{{ 'search' | t }}" autocomplete="off">
+      </form>
+      {% if languages.size > 1 %}
+      <nav class="lang-switch" aria-label="{{ 'language' | t }}">
+        {% for lang in languages %}{% if lang.current %}<span aria-current="true" lang="{{ lang.code }}">{{ lang.name }}</span>{% else %}<a href="{{ lang.href }}" hreflang="{{ lang.code }}" lang="{{ lang.code }}" data-lang="{{ lang.code }}"{% unless lang.available %} data-missing title="{{ 'lang_missing' | t }}"{% endunless %}>{{ lang.name }}</a>{% endif %}{% endfor %}
+      </nav>
+      {% endif %}
     </div>
   </header>
 
@@ -34,8 +50,14 @@
   </main>
 
   <footer class="site-footer">
-    <div class="wrap">
-      <p>© {{ site.year }} {{ site.name }}{% if site.footer_text and site.footer_text != "" %} · {{ site.footer_text }}{% endif %}</p>
+    <div class="frame">
+      {% if nav.footer.size > 0 %}
+      <nav class="footer-nav" aria-label="{{ 'footer_nav' | t }}">
+        {% for item in nav.footer %}<a href="{{ item.url }}"{% if item.new_tab %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ item.label }}</a>{% endfor %}
+      </nav>
+      {% endif %}
+      <p>© {{ site.year }} {{ site.name }}</p>
+      {% if site.footer_text and site.footer_text != "" %}<p>{{ site.footer_text }}</p>{% endif %}
       {% if site.icp and site.icp != "" %}<p><a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">{{ site.icp }}</a></p>{% endif %}
     </div>
   </footer>

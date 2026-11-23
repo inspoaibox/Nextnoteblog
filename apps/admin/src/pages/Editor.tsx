@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { computeStats } from '@nexemc/markdown';
-import { ApiError, api, fmtTime, uploadImage } from '../api';
+import { ApiError, STATUS_LABEL, api, fmtTime, uploadImage } from '../api';
 import { useStatus } from '../App';
 import { MarkdownEditor, type EditorHandle } from '../components/MarkdownEditor';
 import { Preview, type PreviewHandle } from '../components/Preview';
 import { DiffView, Revisions } from '../components/Revisions';
+import { TaxonomyPanel } from '../components/TaxonomyPanel';
 import { Field, Modal, StatusBadge, confirmDialog, toast } from '../components/ui';
 
 interface Fields {
@@ -204,6 +205,31 @@ export function Editor() {
     window.addEventListener('beforeunload', onBeforeUnload);
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
+
+  /** 切到同一篇文章的另一个语言版本前，先把当前修改存好 */
+  const switchTo = async (path: string) => {
+    if (isDirty() && !(await save('auto'))) return;
+    navigate(path);
+  };
+  const addTranslation = async (locale: string, name: string) => {
+    const ok = await confirmDialog({ title: `创建${name}译文？`, body: '会复制当前语言的内容作为译文草稿。翻译并发布后才会对访客可见，其他语言版本不受影响。', confirmText: '创建译文' });
+    if (!ok || (isDirty() && !(await save('manual')))) return;
+    try {
+      const created = await api('POST', `/posts/${id}/translate`, { locale });
+      navigate(`/posts/${created.id}`);
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    }
+  };
+  const markSynced = async () => {
+    try {
+      const payload = await api('POST', `/posts/${id}/synced`, {});
+      setData((d: any) => ({ ...d, source: payload.source }));
+      toast('已标记为与原文同步');
+    } catch (e) {
+      toast((e as Error).message, 'error');
+    }
+  };
 
   const leave = async () => {
     if (isDirty() && !(await save('auto'))) {
@@ -443,6 +469,42 @@ export function Editor() {
         </button>
       </header>
 
+      {status.languages.length > 1 && (
+        <div className="lang-bar">
+          <span className="muted small">语言版本</span>
+          {status.languages.map((l) => {
+            const sibling = data.siblings.find((x: any) => x.locale === l.code);
+            if (sibling)
+              return sibling.id === id ? (
+                <strong key={l.code} className="lang-tab active">
+                  {l.name}
+                </strong>
+              ) : (
+                <button key={l.code} className="lang-tab" onClick={() => void switchTo(`/posts/${sibling.id}`)} title={STATUS_LABEL[sibling.status]}>
+                  {l.name}
+                  <span className={`dot dot-${sibling.status}`} />
+                </button>
+              );
+            return (
+              <button key={l.code} className="lang-tab lang-add" onClick={() => void addTranslation(l.code, l.name)}>
+                ＋ {l.name}
+              </button>
+            );
+          })}
+          {data.source?.stale && (
+            <span className="lang-stale">
+              原文在翻译之后又发布了新版本，译文可能需要更新。
+              <button className="link-btn" onClick={() => void switchTo(`/posts/${data.source.id}`)}>
+                查看原文
+              </button>
+              <button className="link-btn" onClick={() => void markSynced()}>
+                已更新，不再提示
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="editor-toolbar" role="toolbar" aria-label="Markdown 工具栏">
         <select
           aria-label="标题级别"
@@ -544,6 +606,7 @@ export function Editor() {
                 </button>
               </div>
             </Field>
+            <TaxonomyPanel postId={id} />
             <Field label="副标题">
               <input value={fields.subtitle} onChange={(e) => change({ subtitle: e.target.value })} maxLength={300} />
             </Field>

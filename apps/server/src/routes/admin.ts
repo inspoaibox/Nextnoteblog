@@ -11,6 +11,11 @@ import * as postsSvc from '../services/posts.ts';
 import * as mediaSvc from '../services/media.ts';
 import { getSettings, isInstalled, updateSettings } from '../services/settings.ts';
 import { loadTheme } from '../theme/engine.ts';
+import { adminOrgRoutes } from './admin-org.ts';
+import { adminI18nRoutes } from './admin-i18n.ts';
+import * as i18n from '../services/i18n.ts';
+import * as searchSvc from '../services/search.ts';
+import { getTree, descendantIds, invalidateTaxonomy } from '../services/taxonomy.ts';
 
 const idParam = (req: FastifyRequest, name = 'id') => {
   const n = Number((req.params as Record<string, string>)[name]);
@@ -60,6 +65,8 @@ export async function adminRoutes(app: FastifyInstance) {
     // 所有写操作必须带自定义请求头：跨站表单与简单请求带不上它
     if (req.method !== 'GET' && req.headers['x-nb-csrf'] !== '1') throw new HttpError(403, '请求被拒绝（缺少校验头）');
     req.user = await auth.getSessionUser(req.cookies[auth.SESSION_COOKIE]);
+    // 后台当前正在编辑哪种语言的内容
+    req.contentLocale = await i18n.resolveContentLocale(req.headers['x-nb-locale'] as string | undefined);
     if (!PUBLIC.has(route) && !req.user) throw new HttpError(401, '请先登录');
   });
 
@@ -74,7 +81,9 @@ export async function adminRoutes(app: FastifyInstance) {
     return {
       installed: await isInstalled(),
       user: req.user,
-      site: { name: s.siteName, defaultLocale: s.defaultLocale, timezone: s.timezone, appearance: s.appearance },
+      site: { name: s.siteName, defaultLocale: await i18n.getDefaultLocale(), timezone: s.timezone, appearance: s.appearance },
+      languages: await i18n.listLanguages(),
+      contentLocale: req.contentLocale,
       themeCss: `/theme/${theme.manifest.id}/${theme.manifest.version}/style.css`,
     };
   });
@@ -116,6 +125,7 @@ export async function adminRoutes(app: FastifyInstance) {
       return u;
     });
     await updateSettings({ siteName: body.siteName, timezone: body.timezone });
+    await i18n.refreshLanguages();
     await auth.audit({ id: user.id, username: body.username, displayName: '', role: 'admin' }, 'setup', 'site', '', '', ip(req));
     setSessionCookie(req, reply, await auth.createSession(user.id, { ip: ip(req), userAgent: req.headers['user-agent'] }));
     return { ok: true };
@@ -159,10 +169,11 @@ export async function adminRoutes(app: FastifyInstance) {
 
   /* ---------- 仪表盘 ---------- */
 
-  app.get('/dashboard', async () => {
+  app.get('/dashboard', async (req) => {
+    const def = await i18n.getDefaultLocale();
     const [counts, recent, mediaCount, logs] = await Promise.all([
-      postsSvc.counts(),
-      postsSvc.listForAdmin({ filter: 'all', page: 1, pageSize: 6 }),
+      postsSvc.counts(req.contentLocale, def),
+      postsSvc.listForAdmin({ filter: 'all', page: 1, pageSize: 6, locale: req.contentLocale }),
       db.select({ n: sql<number>`count(*)` }).from(schema.media).get(),
       db
         .select({ id: schema.auditLogs.id, action: schema.auditLogs.action, entity: schema.auditLogs.entity, entityId: schema.auditLogs.entityId, detail: schema.auditLogs.detail, createdAt: schema.auditLogs.createdAt, user: schema.users.displayName })
@@ -179,20 +190,24 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/posts', async (req) => {
     const q = parse(
       z.object({
-        filter: z.enum(['all', 'draft', 'published', 'pending', 'unpublished', 'archived', 'trash']).default('all'),
+        filter: z.enum(['all', 'draft', 'published', 'pending', 'unpublished', 'archived', 'trash', 'untranslated']).default('all'),
         q: z.string().max(100).optional(),
         page: z.coerce.number().int().min(1).default(1),
         pageSize: z.coerce.number().int().min(1).max(100).default(20),
+        categoryId: z.coerce.number().int().optional(),
       }),
       req.query,
     );
-    return { ...(await postsSvc.listForAdmin(q)), counts: await postsSvc.counts() };
+    // 按分类筛选时包含它的所有下级分类
+    const { categoryId, ...rest } = q;
+    const node = categoryId ? (await getTree(req.contentLocale)).byId.get(categoryId) : undefined;
+    const def = await i18n.getDefaultLocale();
+    return { ...(await postsSvc.listForAdmin({ ...rest, categoryIds: node ? descendantIds(node) : undefined, locale: req.contentLocale, sourceLocale: def })), counts: await postsSvc.counts(req.contentLocale, def) };
   });
 
   app.post('/posts', async (req) => {
     const body = parse(z.object({ title: z.string().max(300).optional() }), req.body ?? {});
-    const s = await getSettings();
-    const created = await postsSvc.createPost({ title: body.title, locale: s.defaultLocale, authorId: me(req).id });
+    const created = await postsSvc.createPost({ title: body.title, locale: req.contentLocale, authorId: me(req).id });
     await auth.audit(me(req), 'post_create', 'post', created.id, body.title ?? '', ip(req));
     return created;
   });
@@ -211,6 +226,7 @@ export async function adminRoutes(app: FastifyInstance) {
     );
     const result = await postsSvc.updateMeta(idParam(req), body);
     if (body.slug) await auth.audit(me(req), 'post_slug', 'post', idParam(req), body.slug, ip(req));
+    await searchSvc.indexPost(idParam(req));
     return result;
   });
 
@@ -224,6 +240,8 @@ export async function adminRoutes(app: FastifyInstance) {
       const id = idParam(req);
       const result = await run(id, req);
       await auth.audit(me(req), `post_${name}`, 'post', id, '', ip(req));
+      invalidateTaxonomy(); // 发布状态变化会影响分类下的文章计数
+      await searchSvc.indexPost(id);
       return result ?? { ok: true };
     });
 
@@ -238,6 +256,8 @@ export async function adminRoutes(app: FastifyInstance) {
   app.delete('/posts/:id', async (req) => {
     const id = idParam(req);
     await postsSvc.purge(id);
+    invalidateTaxonomy();
+    await searchSvc.indexPost(id);
     await auth.audit(me(req), 'post_purge', 'post', id, '', ip(req));
     return { ok: true };
   });
@@ -252,15 +272,14 @@ export async function adminRoutes(app: FastifyInstance) {
 
   app.get('/slugify', async (req) => {
     const { title = '', exclude } = req.query as { title?: string; exclude?: string };
-    const s = await getSettings();
-    return { slug: await postsSvc.uniqueSlug(slugify(title), s.defaultLocale, exclude ? Number(exclude) : undefined) };
+    return { slug: await postsSvc.uniqueSlug(slugify(title), req.contentLocale, exclude ? Number(exclude) : undefined) };
   });
 
   /* ---------- 媒体 ---------- */
 
   app.get('/media', async (req) => {
-    const q = parse(z.object({ q: z.string().max(100).optional(), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(40) }), req.query);
-    return mediaSvc.listMedia(q);
+    const q = parse(z.object({ q: z.string().max(100).optional(), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(40), unused: z.string().optional() }), req.query);
+    return mediaSvc.listMedia({ ...q, unused: q.unused === '1' });
   });
 
   app.post('/media', async (req) => {
@@ -304,6 +323,7 @@ export async function adminRoutes(app: FastifyInstance) {
           appearance: z.enum(['light', 'dark', 'auto']),
           icp: z.string().max(100),
           footerText: z.string().max(500),
+          langFallback: z.enum(['home', 'hide']),
         })
         .partial(),
       req.body,
@@ -319,10 +339,14 @@ export async function adminRoutes(app: FastifyInstance) {
     await auth.audit(me(req), 'settings_update', 'settings', '', Object.keys(body).join(','), ip(req));
     return result;
   });
+
+  await app.register(adminOrgRoutes);
+  await app.register(adminI18nRoutes);
 }
 
 declare module 'fastify' {
   interface FastifyRequest {
     user: auth.AuthUser | null;
+    contentLocale: string;
   }
 }

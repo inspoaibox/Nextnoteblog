@@ -64,11 +64,30 @@ export async function saveImage(input: { buffer: Buffer; originalName: string; p
   return { ...serialize(row), duplicate: false };
 }
 
-export async function listMedia(opts: { q?: string; page: number; pageSize: number }) {
+/** 当前所有“活着的”内容文本：文章的线上版与草稿、页面、专题封面。用来判断图片是否仍被引用 */
+async function referencedText(): Promise<string> {
+  const revs = await db
+    .select({ markdown: revisions.markdown, cover: revisions.cover })
+    .from(pt)
+    .innerJoin(revisions, or(eq(revisions.id, pt.draftRevisionId), eq(revisions.id, pt.publishedRevisionId)));
+  const pages = await db.select({ a: schema.pageTranslations.markdown, b: schema.pageTranslations.publishedMarkdown }).from(schema.pageTranslations);
+  const cols = await db.select({ cover: schema.collections.cover }).from(schema.collections);
+  return [...revs.flatMap((r) => [r.markdown, r.cover]), ...pages.flatMap((p) => [p.a, p.b]), ...cols.map((c) => c.cover)].join('\n');
+}
+
+export async function listMedia(opts: { q?: string; page: number; pageSize: number; unused?: boolean }) {
+  if (opts.unused) {
+    // 未引用资源：全量扫描后在内存里分页（个人博客的媒体数量级足够小）
+    const text = await referencedText();
+    const all = (await db.select().from(media).orderBy(desc(media.id))).filter((m) => !text.includes(mediaUrl(m.path)));
+    const start = (opts.page - 1) * opts.pageSize;
+    return { total: all.length, page: opts.page, pageSize: opts.pageSize, items: all.slice(start, start + opts.pageSize).map((m) => ({ ...serialize(m), used: false })) };
+  }
   const where = opts.q?.trim() ? or(like(media.originalName, `%${opts.q.trim()}%`), like(media.path, `%${opts.q.trim()}%`), like(media.alt, `%${opts.q.trim()}%`)) : undefined;
   const total = (await db.select({ n: sql<number>`count(*)` }).from(media).where(where).get())!.n;
   const rows = await db.select().from(media).where(where).orderBy(desc(media.id)).limit(opts.pageSize).offset((opts.page - 1) * opts.pageSize);
-  return { total, page: opts.page, pageSize: opts.pageSize, items: rows.map(serialize) };
+  const text = await referencedText();
+  return { total, page: opts.page, pageSize: opts.pageSize, items: rows.map((m) => ({ ...serialize(m), used: text.includes(mediaUrl(m.path)) })) };
 }
 
 async function getMedia(id: number) {

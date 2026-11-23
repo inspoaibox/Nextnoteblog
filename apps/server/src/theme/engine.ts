@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Liquid } from 'liquidjs';
 import { config } from '../config.ts';
+import { defaultLocaleSync } from '../services/i18n.ts';
 
 export interface ThemeManifest {
   id: string;
@@ -23,7 +24,25 @@ interface LoadedTheme {
   locales: Record<string, Record<string, string>>;
 }
 
-const REQUIRED_TEMPLATES = ['layout', 'home', 'post-list', 'post', '404'];
+function lookup(locales: Record<string, Record<string, string>>, locale: string, key: string): string {
+  const base = locale.split('-')[0];
+  return locales[locale]?.[key] ?? locales[base]?.[key] ?? locales[defaultLocaleSync()]?.[key] ?? locales['zh-CN']?.[key] ?? key;
+}
+
+/** 服务端代码里取主题文案（页面标题等），规则与模板里的 t 过滤器一致 */
+export function translate(themeId: string, locale: string, key: string, overrides: Record<string, string> = {}, vars: Record<string, string | number> = {}): string {
+  let text = overrides[key] ?? lookup(loadTheme(themeId).locales, locale, key);
+  for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));
+  return text;
+}
+
+/** 主题某个语言包的全部文案（后台“界面文案”页用） */
+export function themeStrings(themeId: string, locale: string): Record<string, string> {
+  const { locales } = loadTheme(themeId);
+  return locales[locale] ?? locales[locale.split('-')[0]] ?? {};
+}
+
+const REQUIRED_TEMPLATES = ['layout', 'home', 'post-list', 'post', 'category', 'tags', 'collection', 'archive', 'search', 'page', '404'];
 const loaded = new Map<string, LoadedTheme>();
 
 function readJson(file: string) {
@@ -63,17 +82,24 @@ export function loadTheme(id: string): LoadedTheme {
 
   const assetBase = `/theme/${manifest.id}/${manifest.version}`;
   liquid.registerFilter('asset_url', (file: string) => `${assetBase}/${String(file).replace(/^\/+/, '')}`);
-  liquid.registerFilter('t', function (this: any, key: string, vars?: Record<string, unknown>) {
+  // 文案查找顺序：后台覆盖 → 主题当前语言 → 主题默认语言 → 主题 zh-CN → 键名本身
+  liquid.registerFilter('t', function (this: any, key: string) {
     const locale = String(this.context.getSync(['site', 'locale']) ?? 'zh-CN');
-    let text = locales[locale]?.[key] ?? locales['zh-CN']?.[key] ?? key;
-    if (vars && typeof vars === 'object') for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));
-    return text;
+    const overrides = (this.context.getSync(['_ui']) ?? {}) as Record<string, string>;
+    return overrides[key] ?? lookup(locales, locale, key);
   });
-  liquid.registerFilter('date_fmt', function (this: any, value: number, style: 'long' | 'medium' | 'short' = 'long') {
+  // 站内地址加上当前语言的前缀：{{ '/posts' | url }}
+  liquid.registerFilter('url', function (this: any, path: string) {
+    const prefix = String(this.context.getSync(['site', 'prefix']) ?? '');
+    return prefix + (path === '/' && prefix ? '' : path) || '/';
+  });
+  // style：long / medium / short 为完整日期；year 只取年份；md 只取“月日”（用于按年分组的索引）
+  liquid.registerFilter('date_fmt', function (this: any, value: number, style: 'long' | 'medium' | 'short' | 'year' | 'md' = 'long') {
     if (!value) return '';
     const locale = String(this.context.getSync(['site', 'locale']) ?? 'zh-CN');
     const timeZone = String(this.context.getSync(['site', 'timezone']) ?? 'UTC');
-    return new Intl.DateTimeFormat(locale, { dateStyle: style, timeZone }).format(new Date(value));
+    const options: Intl.DateTimeFormatOptions = style === 'year' ? { year: 'numeric' } : style === 'md' ? { month: 'short', day: 'numeric' } : { dateStyle: style };
+    return new Intl.DateTimeFormat(locale, { ...options, timeZone }).format(new Date(value));
   });
   liquid.registerFilter('date_iso', (value: number) => (value ? new Date(value).toISOString() : ''));
   liquid.registerFilter('num', function (this: any, value: number) {
@@ -89,7 +115,9 @@ export function loadTheme(id: string): LoadedTheme {
 export async function renderPage(themeId: string, template: string, context: Record<string, unknown>): Promise<string> {
   const theme = loadTheme(themeId);
   const assetBase = `/theme/${theme.manifest.id}/${theme.manifest.version}`;
-  return theme.liquid.renderFile(template, { ...context, theme: { ...theme.manifest, asset_base: assetBase } });
+  const themeInfo = { ...theme.manifest, asset_base: assetBase };
+  // render 引入的片段有独立作用域：把语言相关的数据作为全局量传入，片段里的 t / url / 日期过滤器才能拿到当前语言
+  return theme.liquid.renderFile(template, { ...context, theme: themeInfo }, { globals: { site: context.site, _ui: context._ui, theme: themeInfo } });
 }
 
 /** 主题静态资源目录（只暴露 assets/，模板与配置不可下载） */

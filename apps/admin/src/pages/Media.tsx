@@ -8,17 +8,18 @@ export function Media() {
   const [page, setPage] = useState(1);
   const [q, setQ] = useState('');
   const [search, setSearch] = useState('');
+  const [unused, setUnused] = useState(false);
   const [uploading, setUploading] = useState(0);
   const [current, setCurrent] = useState<MediaItem | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     try {
-      setData(await api('GET', `/media?page=${page}&q=${encodeURIComponent(q)}`));
+      setData(await api('GET', `/media?page=${page}&q=${encodeURIComponent(q)}${unused ? '&unused=1' : ''}`));
     } catch (e) {
       toast((e as Error).message, 'error');
     }
-  }, [page, q]);
+  }, [page, q, unused]);
   useEffect(() => void load(), [load]);
 
   const upload = async (files: File[]) => {
@@ -93,6 +94,17 @@ export function Media() {
           >
             <input type="search" placeholder="搜索文件名…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="搜索媒体" />
           </form>
+          <label className="check" style={{ margin: 0 }} title="没有被任何文章、页面、专题引用的图片">
+            <input
+              type="checkbox"
+              checked={unused}
+              onChange={(e) => {
+                setPage(1);
+                setUnused(e.target.checked);
+              }}
+            />
+            只看未引用
+          </label>
           <button className="btn btn-primary" onClick={() => fileInput.current?.click()} disabled={uploading > 0}>
             {uploading > 0 ? `上传中（剩余 ${uploading}）…` : '上传图片'}
           </button>
@@ -121,13 +133,14 @@ export function Media() {
         {!data ? (
           <div className="muted">加载中…</div>
         ) : data.items.length === 0 ? (
-          <div className="empty">{q ? '没有匹配的文件' : '还没有图片。点击“上传图片”，或把图片拖到这里。支持 JPG、PNG、WebP、GIF、AVIF，单个不超过 10MB。'}</div>
+          <div className="empty">{unused ? '没有未引用的图片，所有图片都在使用中。' : q ? '没有匹配的文件' : '还没有图片。点击“上传图片”，或把图片拖到这里。支持 JPG、PNG、WebP、GIF、AVIF，单个不超过 10MB。'}</div>
         ) : (
           <div className="media-grid">
             {data.items.map((m) => (
               <button key={m.id} className="media-item" onClick={() => setCurrent(m)} title={m.originalName}>
                 <img src={m.url} alt={m.alt} loading="lazy" />
                 <span>{m.originalName}</span>
+                {(m as any).used === false && <span className="badge badge-pending">未引用</span>}
               </button>
             ))}
           </div>

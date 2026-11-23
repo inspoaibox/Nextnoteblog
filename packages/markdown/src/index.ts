@@ -38,7 +38,16 @@ export interface RenderResult {
   /** 正文中的站内链接 */
   links: string[];
 }
+/** 管线自己输出的少量界面文字，由调用方按语言传入 */
+export interface RenderLabels {
+  footnotes?: string;
+  footnoteBack?: string;
+  copy?: string;
+  unsupported?: string;
+}
+
 export interface RenderOptions {
+  labels?: RenderLabels;
   /** 给顶层块加 data-line，供编辑器滚动同步 */
   sourceLines?: boolean;
 }
@@ -89,7 +98,7 @@ export function plainExcerpt(markdown: string, max = 140): string {
 
 /* ---------- remark：容器语法 ::: ---------- */
 
-function remarkContainers() {
+function remarkContainers(options: { unsupported: string }) {
   return (tree: any, file: any) => {
     const source = String(file.value);
     visit(tree, (node: any, index: number | undefined, parent: any) => {
@@ -110,7 +119,7 @@ function remarkContainers() {
           node.children.unshift({
             type: 'paragraph',
             data: { hProperties: { className: ['callout-title'] } },
-            children: [{ type: 'text', value: `不支持的容器语法 :::${node.name}` }],
+            children: [{ type: 'text', value: `${options.unsupported} :::${node.name}` }],
           });
         }
         return;
@@ -171,8 +180,8 @@ interface Collected {
   links: string[];
 }
 
-function rehypeEnhance(options: { collected: Collected; sourceLines: boolean }) {
-  const { collected, sourceLines } = options;
+function rehypeEnhance(options: { collected: Collected; sourceLines: boolean; copyLabel: string }) {
+  const { collected, sourceLines, copyLabel } = options;
   return async (tree: any) => {
     const codeJobs: Promise<void>[] = [];
 
@@ -247,7 +256,7 @@ function rehypeEnhance(options: { collected: Collected; sourceLines: boolean }) 
               [
                 h('div', { className: ['code-head'] }, [
                   h('span', { className: ['code-lang'] }, [txt(rawLang || 'text')]),
-                  h('button', { className: ['code-copy'], type: 'button' }, [txt('复制')]),
+                  h('button', { className: ['code-copy'], type: 'button' }, [txt(copyLabel)]),
                 ]),
                 pre,
               ],
@@ -266,16 +275,17 @@ function rehypeEnhance(options: { collected: Collected; sourceLines: boolean }) 
 
 export async function renderMarkdown(markdown: string, options: RenderOptions = {}): Promise<RenderResult> {
   const collected: Collected = { toc: [], images: [], links: [] };
+  const labels = options.labels ?? {};
   const file = await unified()
     .use(remarkParse)
     .use(remarkFrontmatter, ['yaml', 'toml'])
     .use(remarkGfm)
     .use(remarkDirective)
-    .use(remarkContainers)
-    .use(remarkRehype, { footnoteLabel: '脚注', footnoteBackLabel: '返回正文' })
+    .use(remarkContainers, { unsupported: labels.unsupported ?? '不支持的容器语法' })
+    .use(remarkRehype, { footnoteLabel: labels.footnotes ?? '脚注', footnoteBackLabel: labels.footnoteBack ?? '返回正文' })
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeSlug)
-    .use(rehypeEnhance, { collected, sourceLines: !!options.sourceLines })
+    .use(rehypeEnhance, { collected, sourceLines: !!options.sourceLines, copyLabel: labels.copy ?? '复制' })
     .use(rehypeStringify)
     .process(markdown);
 
